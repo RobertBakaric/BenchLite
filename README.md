@@ -1,6 +1,6 @@
 # BenchLite
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)]( )
+[![License](https://img.shields.io/badge/license-GPL-blue.svg)]( )
 
 Simple CLI benchmarking tool
 
