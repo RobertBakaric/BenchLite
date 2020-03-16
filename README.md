@@ -1,4 +1,7 @@
 # BenchLite
+
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)]( )
+
 Simple CLI benchmarking tool
 
 # Synopsis
@@ -44,7 +47,7 @@ Simple CLI benchmarking tool
 	
 	Robert Bakaric <robertbakaric@zoho.com>
 
-# Licence
+# License
 
 
   
