@@ -40,8 +40,8 @@ Simple CLI benchmarking tool
 		d) disc usage 
 
 	"bench" is a simple cli application that utilizes all of the above stated quantifiations 
-        schemas and crunches out a simple descriptive statistical summary for a set of measurments
-        obtained from direct cli app executions
+	schemas and crunches out a simple descriptive statistical summary for a set of measurments
+	obtained from direct cli app executions
 
 # Author
 	
