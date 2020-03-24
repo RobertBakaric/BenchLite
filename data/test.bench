@@ -1,0 +1,24 @@
+# My bench sets
+
+%TagClasses:A,B, C, D
+
+# Run
+
+%Tags:   a,10,c,d
+%Flags:   -i,>
+perl /home/robert/projects/Algorithms/BenchLite/data/sleep.pl -i /home/robert/projects/Algorithms/BenchLite/data/in -x 100000  > out
+
+
+%Tags:   a,100,c,d
+%Flags:   -i,-o
+perl /home/robert/projects/Algorithms/BenchLite/data/sleep.pl -i /home/robert/projects/Algorithms/BenchLite/data/in -x 100000  -o out
+
+
+%Tags:   a,1000,c,d
+%Flags:   >
+getRandSeq -l 1000 > out
+
+
+%Tags:   a,10,c,d
+%Flags:  >
+getRandSeq -l 10 > out
