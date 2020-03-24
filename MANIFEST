@@ -2,12 +2,12 @@ AUTHORS
 MANIFEST
 ChangeLog
 COPYING
-Makefile.PL
+Build.PL
 README
 doc/BenchLite.pdf
+src/apps/check.pl
 src/apps/Bench.pl
-src/apps/Plot.R
-src/lib/Bench/Lite.pm
+src/lib/Bench/BenchLite.pm
 src/t/00-load.t
 src/t/01-Bench.t
 src/t/02-Plot.t
