@@ -1,136 +1,480 @@
 #!/usr/bin/perl
-#  Copyright 2020 Robert Bakaric
-#  
+#  Copyright 2020 Robert Bakaric and Neva Skrabar
+#
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
 #  the Free Software Foundation; either version 2 of the License, or
 #  (at your option) any later version.
-#  
+#
 #  This program is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
-#  
+#
 #  You should have received a copy of the GNU General Public License
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 #  MA 02110-1301, USA.
-#  
-# 
+#
+#
+
+package Bench::BenchLite;
+
 
 =head1 NAME
-	bench - Simple Benchmark tool for CLI applications 
+
+Bench::BenchLite - Simple Benchmark module for batch based CLI applications
+
 =head1 SYNOPSIS
-	Usage:
 
-	-p	Testing ... (file.bench)  : file containing a list of cmd's to be benchmarked
-	-l	Log file                  : file containing execution logs
-	-o	output                    : directory contiaining outputs of each tool together with detailed benchmark statistics
-	-b	bootstrap                 : the number of times a measurments are to be repeated
-	-d	Delta T in sec            : timeframe in which memory consumption should be recorded
-	-i	Session Id                : benchmark session identifier segregating different benchmarkings within the same framework
-	-f	Monitor flags             : CLI options to be monitored (currently only those taking files are subjected to filesize measurments)
-
-
-	Example of  my.bench file :
-	
-	
-		#Tool -- comment line
-		tool -i in -o out 
-		tool2 -i in2 -o out2 
-
-
-	Execute:
-	bench -f "-i -o" -l My_Log_Date -o My_Bench_Out -b 10 -d 10 -s 1  -p my.bench
-
-
+    use Bench::BenchLite;
+    my $object = Bench::BenchLite->new();
+    print $object->as_string;
 
 =head1 DESCRIPTION
-	Benchmarking is the practice of comparing processes and performance metrics to 
-	industry standard best practice solutions. Parameters typically considered 
-	within a measurment process are:
-		
-		a) quality of the resulting output, 
-		b) execution time 
-		c) memory usage 
-		d) disc usage 
 
-	"bench" is a simple cli application that utilizes all of the above stated quantifiations 
-        schemas and crunches out a simple descriptive statistical summary for a set of measurments
-        obtained from direct cli app executions
+Benchmarking is the practice of comparing processes and performance metrics to
+industry standard best practice solutions. Parameters typically considered
+within a measurment process are:
+
+  a) quality of the resulting output,
+  b) execution time
+  c) memory usage
+  d) disc usage
+
+"BenchLite" is a simple module for building fast and simple  benchmarking applications
+under Unix environment.
+
+=head1 LICENSE
+
+The softare is released under the General Public License. See L<perlartistic>.
 
 =head1 AUTHOR
-Robert Bakaric <robertbakaric@zoho.com>
-=head1 LICENSE
-  
-	#  Copyright 2020 Robert Bakaric
-	#  
-	#  This program is free software; you can redistribute it and/or modify
-	#  it under the terms of the GNU General Public License as published by
-	#  the Free Software Foundation; either version 2 of the License, or
-	#  (at your option) any later version.
-	#  
-	#  This program is distributed in the hope that it will be useful,
-	#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-	#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	#  GNU General Public License for more details.
-	#  
-	#  You should have received a copy of the GNU General Public License
-	#  along with this program; if not, write to the Free Software
-	#  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-	#  MA 02110-1301, USA.
-	#  
-	# 
- 
-=head1 ACKNOWLEDGEMENT
- 
+
+Robert Bakaric and Neva Skrabar
+
+=head1 SEE ALSO
+
+L<perlpod>, L<perlpodspec>
+
+
+=head2 Methods
+
+
+
+=over 12
+
+=item C<new>
+
+Constructor: returns a new Bench::BenchLite object.
+
+
+=begin html
+ <br>Figure 1.<IMG SRC="figure.jpg"><br>
+=end html
+
+
+=item C<as_string>
+
+Returns a stringified representation of
+the object. This is mainly for debugging
+purposes.
+
+=back
+
 =cut
 
 
 
-
+#---------------------------------------------------------#
+#                     Libraries
+#---------------------------------------------------------#
 
 use strict;
-#use warnings;
+use warnings;
 use Time::HiRes;
-use Getopt::Long;
 use File::Basename qw( fileparse );
 use File::Path qw( make_path );
 use File::Spec;
 use Proc::ProcessTable;
 use IO::CaptureOutput qw/capture_exec/;
 use Statistics::Basic qw(:all nofill);
+use Data::Dumper;
 
-my ($help, $par, $logfile, $out, $boot, $deltaT, $id, $flags, $quite);
-GetOptions ("p=s" => \$par,
-            "h" => \$help,
-            "l=s" => \$logfile,
-            "o=s" => \$out,
-            "b=i" => \$boot,
-            "d=i" => \$deltaT,
-            "i=s" => \$id,
-            "f=s" => \$flags,
-            "q"  => \$quite
-            );
+#---------------------------------------------------------#
+#                      CONSTRUCTOR
+#---------------------------------------------------------#
 
-if($help  || !$par || !$id){
-  print "Usage:\n\n";
-  print "\t-p\tTesting ... (file.bench)\n";
-  print "\t-l\tLog file\n";
-  print "\t-o\toutput\n";
-  print "\t-b\tbootstrap\n";
-  print "\t-d\tDelta T in sec\n";
-  print "\t-i\tSession Id\n";
-  print "\t-f\tMonitor flags\n";
-  print "\n\nExample *.bench file :\n";
-  print "#Tool -> line not read because of #\n";
-  print "tool -i in -o out \n";
-  print "tool2 -i in2 -o out2 \n";
-  print "\n\nExecute:\n";
-  print "bench -f \"-i -o\" -l My_Log_Date -o My_Bench_Out -b 10 -d 10 -s 1  -p my.bench\n";
+sub new {
+    my ($class) = @_;
 
-  exit(0);
+    my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime();
+
+    my %hash = ();
+    my $def_out = "" . $sec . "_" ."$mday" ."_" . ($mon+1) . "_" .  ($year%100);
+
+    my $self->{_name_}   = "Bench";
+    $self->{_date_} = $sec . "s" . $min . "m" . $hour . "h" .   $mday . "d" . ($mon+1) . "m" . ($year%100) . "y";
+    $self->{_suffix_} = ".bench";
+    $self->{_output_} = "./Bench";
+    $self->{_log_} = "Bench.log";
+    $self->{_stats_} = 0;
+    $self->{_stats_table_} = %hash;
+    $self->{_def_name_} = $def_out;
+    $self->{_bootstrap_} = 0;
+    $self->{_delta_} = 1;
+
+
+    bless $self, $class;
+    return $self;
 }
+
+
+#---------------------------------------------------------#
+#                  Object public methods
+#---------------------------------------------------------#
+sub benchmark {
+
+  my ($self, $arg) = @_;
+
+  # make a working directory
+
+  $self->_makepath("$self->{_output_}/$self->{_def_name_}");
+
+  my $cmds = $self->_parse_script($arg);
+
+  # loop the execution:
+
+  print "Benchmarking  ...\n" ;
+
+  foreach my $c (sort {$a <=> $b} keys %{$cmds->{"cmd"}}) {
+    my $pid = $$;
+    print "$pid -- $cmds->{cmd}->{$c}->{exe} ... ";
+
+    for (my $b = 1; $b <= $self->{_bootstrap_}; $b++){
+
+      my $forks = 0;
+      for (1 .. 1) {
+        my $pid = fork;
+        if (not defined $pid) {
+           warn 'Could not fork';
+           next;
+        }
+
+        if ($pid) {
+          $forks++;
+          # Memory
+          $self->_measure_memory(
+                         "deltaT" => $self->{_delta_},
+                         "pid"    => $pid+2,
+                         "cmds"   => $cmds,
+                         "swtch"  => [$c,$b]
+                         );
+        } else {
+          my $ppd = $$ + 2;
+          # Time
+          $self->_measure_runtime(
+                          "pid"    => $ppd,
+                          "cmds"   => $cmds,
+                          "swtch"  => [$c,$b]
+                          );
+          # Disc
+          $self->_measure_disc(
+                          "pid"    => $ppd,
+                          "cmds"   => $cmds,
+                          "swtch"  => [$c,$b]
+                          );
+          exit;
+        }
+      }
+
+      for (1 .. $forks) {
+         my $pid = wait();
+      }
+    }
+
+    print " Done! \n";
+
+  }
+
+
+  $self->_load_stats();
+
+  return 1;
+}
+
+
+sub compute_stats{
+
+  my ($self) = shift;
+
+
+
+
+
+
+}
+
+sub get_stats {
+
+  my ($self, $flag) = @_;
+
+  if ($self->{_stats_}  == 0){
+    die "$!\nYou need to run: \$obj->compute_stats() first!";
+  }
+
+  if ($flag eq "as_string") {
+    return Dumper($self->{_stats_table_});
+  }elsif ($flag eq "as_table"){
+    return $self->_make_table();
+  }elsif ($flag eq "as_object"){
+    return $self->{_stats_table_};
+  }else{
+    die "$!\n$flag not recognized!\n";
+  }
+}
+
+
+
+#---------------------------------------------------------#
+#                  Object private methods
+#---------------------------------------------------------#
+
+
+sub _make_table {
+
+  my ($self) = @_;
+
+  ## hash to tsv
+}
+
+
+sub _load_stats{
+
+  my ($self) = @_;
+
+  # open Runtime
+
+  open (R, "<", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.rtime.log") || die "$!";
+
+  while(<R>){
+    chomp;
+    if (/^#(.*)/){
+      @head = split("\t", $1);
+    }
+
+
+  }
+
+  close R;
+
+  # oprt memory_usage
+
+  open (M, "<", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.mem.log") || die "$!";
+
+  open (D, "<", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.disc.log") || die "$!";
+
+  # open disc
+}
+
+sub _measure_memory {
+
+  my ($self, %arg) = @_;
+
+  my $mem = 1;
+  my @mem = ();
+  while ($mem > 0) {
+    sleep $arg{"deltaT"};
+    $mem = $self->_memory_usage($arg{"pid"});
+    push(@mem,$mem);
+  }
+
+  open(OM, ">>", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.mem.log") || die "$!";
+
+  print OM "#"
+    .join("\t",@{$arg{"cmds"}->{"header"}})
+    ."\tBootstrap"
+    ."\tPID"
+    ."\tMemAvg(MB)"
+    ."\tMemSD(MB)"
+    ."\tMemMax(MB)"
+    ."\tCmd"
+    ."\tMem(MB)_[$arg{deltaT} sec]"
+    ."\n" if $arg{"swtch"}->[0] == 0 && $arg{"swtch"}->[1] == 1 ;
+
+  print OM ""
+    .join("\t",@{$arg{"cmds"}->{"cmd"}->{$arg{"swtch"}->[0]}->{"tags"}})
+    ."\t" . $arg{"swtch"}->[1]
+    ."\t" . $arg{"pid"}
+    ."\t" . mean(@mem)
+    ."\t" . stddev(@mem)
+    ."\t" . $self->_max(@mem)
+    ."\t" . $arg{"cmds"}->{"cmd"}->{$arg{"swtch"}->[0]}->{"exe"}
+    ."\t" . join(",",@mem)
+    ."\n";
+
+  close OM;
+
+}
+
+sub _measure_runtime{
+
+  my ($self, %arg) = @_;
+
+  my $start_time = [Time::HiRes::gettimeofday()];
+  system("$arg{cmds}->{cmd}->{$arg{swtch}->[0]}->{exe} 2> $self->{_output_}/$self->{_def_name_}/$self->{_log_}");
+  my ($user, $system, $child_user, $child_system) = times;
+  my $clock =  Time::HiRes::tv_interval($start_time);
+
+  open(OT, ">>", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.rtime.log") || die "$!";
+
+  print OT "#"
+    .join("\t",@{$arg{"cmds"}->{"header"}})
+    ."\tBootstrap"
+    ."\tPID"
+    ."\tUserTime"
+    ."\tSysTime"
+    ."\tTotTime"
+    ."\tTool"
+    ."\n" if $arg{"swtch"}->[0] == 0 && $arg{"swtch"}->[1] == 1 ;
+
+  print OT ""
+    .join("\t",@{$arg{"cmds"}->{"cmd"}->{$arg{"swtch"}->[0]}->{"tags"}})
+    ."\t" . $arg{"swtch"}->[1]
+    ."\t" . $arg{"pid"}
+    ."\t" . $child_user
+    ."\t" . $child_system
+    ."\t" . $clock
+    ."\t" . $arg{"cmds"}->{"cmd"}->{$arg{"swtch"}->[0]}->{"exe"}
+    ."\n";
+
+  close OT;
+
+}
+
+
+sub _measure_disc {
+
+  my ($self,%arg) = @_;
+
+  my @flags = @{$arg{"cmds"}->{"cmd"}->{$arg{"swtch"}->[0]}->{"flags"}};
+  my @cmd   = split(" ",$arg{"cmds"}->{"cmd"}->{$arg{"swtch"}->[0]}->{"exe"});
+  my @flag_res = ();
+
+  for (my $q=0; $q<@cmd; $q++){
+    foreach my $flg (@flags) {
+      if ($cmd[$q] eq $flg){
+        my $d = qx(du -b $cmd[$q+1]);
+        $d=~/^(.*?)\s+/;
+        push(@flag_res,$1);
+      }
+    }
+  }
+
+
+  open(OD, ">>", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.disc.log") || die "$!";
+
+  print OD "#"
+    .join("\t",@{$arg{"cmds"}->{"header"}})
+    ."\tBootstrap"
+    ."\tPID"
+    ."\tDiscUsage:"
+    .join("\t",@flags)
+    ."\tCmd"
+    ."\n" if $arg{"swtch"}->[0] == 0 && $arg{"swtch"}->[1] == 1 ;
+
+  print OD ""
+    .join("\t",@{$arg{"cmds"}->{"cmd"}->{$arg{"swtch"}->[0]}->{"tags"}})
+    ."\t" . $arg{"swtch"}->[1]
+    ."\t" . $arg{"pid"}
+    ."\t" . join("\t",@flag_res)
+    ."\t" . $arg{"cmds"}->{"cmd"}->{$arg{"swtch"}->[0]}->{"exe"}
+    ."\n";
+
+  close OD;
+
+}
+
+
+sub _parse_script{
+
+  my ($self,$arg) = @_;
+
+  open (SC, "<", $arg) || die "$!";
+
+  my %schema = ();
+  my $i = 0;
+
+  while (<SC>){
+    chomp;
+    next if /#/ || /^$/ || /^ *$/;
+    if (/%Tags:(.*)/){
+      my $t = $1;
+      $t =~ s/ //g;
+      foreach my $tag (split(",", $t)){
+        push(@{$schema{"cmd"}{$i}{"tags"}},$tag);
+      }
+    }elsif(/%Flags:(.*)/){
+      my $f = $1;
+      $f =~ s/ //g;
+      foreach my $flag (split(",", $f)){
+        push(@{$schema{"cmd"}{$i}{"flags"}},$flag);
+      }
+    }elsif(/%TagClasses:(.*)/){
+      my $c = $1;
+      $c =~ s/ //g;
+      foreach my $head (split(",", $c)){
+        push(@{$schema{"header"}},$head);
+      }
+    }else{
+      $schema{"cmd"}{$i++}{"exe"} = $_;
+    }
+  }
+  close SC;
+
+  return \%schema;
+}
+
+
+sub _makepath {
+
+  my ($self,$directory) = @_;
+
+  if ( !-d $directory ) {
+      make_path $directory or die "Failed to create path: $directory";
+  }
+}
+
+
+sub _max{
+
+  my ($self, @arg) = @_;
+
+  my $max = 0;
+  foreach my $m (@arg){
+    $max = $m if $m > $max;
+  }
+  return $max;
+}
+
+
+sub _memory_usage() {
+
+    my ($self,$pp) = @_;
+
+    print "$pp\n";
+    my $t = new Proc::ProcessTable;
+    foreach my $got (@{$t->table}) {
+        next unless $got->pid eq $pp;
+        return (sprintf ("%.2f", $got->size / 1000000));
+    }
+
+}
+
+
+1;
+
+=pod
 
 ##--------------- Testing Parser ----------------#
 
@@ -177,92 +521,7 @@ if ( !-d $outlog ) {
 }
 
 
-print "Evaluating  ...\n" ;
 
-foreach my $t (@tests) {
-  $t_id++;
-
-  my $pid = $$;
-
-  print "$t ... ";
-
-
-  for (my $b = 1; $b <= $boot; $b++){
-
-    my $forks = 0;
-    for (1 .. 1) {
-      my $pid = fork;
-      if (not defined $pid) {
-         warn 'Could not fork';
-         next;
-      }
-      if ($pid) {
-        $forks++;
-
-        my $mem = 1;
-        my $mem_avrg = 0;
-        my $mem_sum = 0;
-        my $mem_max = 0;
-        my $mem_cnt = 0;
-        my @mem;
-
-        while ($mem > 0) {
-          sleep $deltaT;
-          $mem =  &memory_usage($pid+2);
-          push(@mem,$mem);
-          $mem_max = $mem if $mem > $mem_max;
-          $mem_cnt++;
-          $mem_sum +=$mem;
-          $mem_avrg = $mem_sum/$mem_cnt;
-        }
-
-        open(OM, ">>", "$outlog/$id.mem.log") || die "$!";
-        print OM "#Tool\tBoot\tPID\tMemAvg(MB)\tMemMax(MB)\tMem(MB)_[$deltaT sec]\n" if $t_id == 1 && $b == 1 ;
-        print OM "$t\t$b\t".($pid+2)."\t".(sprintf("%.2f",$mem_avrg)). "\t$mem_max\t" . join(",",@mem) . "\n";
-        close OM;
-
-      } else {
-
-        # Time
-        my @pmts = split(" ",$t);
-        my $start_time = [Time::HiRes::gettimeofday()];
-          system("$t > $outlog/$pid.log");
-        my ($user, $system, $child_user, $child_system) = times;
-        my $clock =  Time::HiRes::tv_interval($start_time);
-
-
-        # Memory
-        my $ppd = $$ +2;
-        my @flags = split(",",$flags);
-        my @flag_res = ();
-
-        for (my $q=0; $q<@pmts; $q++){
-          foreach my $flg (@flags) {
-            if ($pmts[$q] eq $flg){
-              my $d = qx(du -b $pmts[$q+1]);
-              $d=~/^(.*?)\s+/;
-              push(@flag_res,$1);
-            }
-          }
-        }
-
-        open(OT, ">>", "$outlog/$id.ts.log") || die "$!";
-        print OT "#Tool\tBoot\tPID\tUserTime\tSysTime\tTotTime\tDiscUsage:@flags\n" if $t_id == 1 && $b == 1 ;
-        print OT "$t\t$b\t$ppd\t$child_user\t$child_system\t$clock\t@flag_res\n";
-        close OT;
-
-        exit;
-      }
-    }
-
-    for (1 .. $forks) {
-       my $pid = wait();
-    }
-  }
-
-  print " Done! \n";
-
-}
 
 ## -------------Summary stats
 
@@ -336,3 +595,4 @@ sub getLoggingTime {
     return $nice_timestamp;
 
 }
+=cut
