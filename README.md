@@ -18,11 +18,11 @@ Simple CLI benchmarking tool
 
 
 	Example of  my.bench file :
-	
-	
+
+
 		#Tool -- comment line
-		tool -i in -o out 
-		tool2 -i in2 -o out2 
+		tool -i in -o out
+		tool2 -i in2 -o out2
 
 
 	Execute:
@@ -30,28 +30,29 @@ Simple CLI benchmarking tool
 
 # Description
 
-	Benchmarking is the practice of comparing processes and performance metrics to 
-	industry standard best practice solutions. Parameters typically considered 
+	Benchmarking is the practice of comparing processes and performance metrics to
+	industry standard best practice solutions. Parameters typically considered
 	within a measurment process are:
-		
-		a) quality of the resulting output, 
-		b) execution time 
-		c) memory usage 
-		d) disc usage 
 
-	"bench" is a simple cli application that utilizes all of the above stated quantifiations 
+		a) quality of the resulting output,
+		b) execution time
+		c) memory usage
+		d) disc usage
+
+	"bench" is a simple cli application that utilizes all of the above stated quantifiations
 	schemas and crunches out a simple descriptive statistical summary for a set of measurments
 	obtained from direct cli app executions
 
 # Author
-	
+
 	Robert Bakaric <robertbakaric@zoho.com>
+	Neva Skrabar <>
 
 # License
 
 
-  
-	#  Copyright 2020 Robert Bakaric
+
+	#  Copyright 2020 Robert Bakaric & Neva Skrabar
 	#  
 	#  This program is free software; you can redistribute it and/or modify
 	#  it under the terms of the GNU General Public License as published by
@@ -68,5 +69,4 @@ Simple CLI benchmarking tool
 	#  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 	#  MA 02110-1301, USA.
 	#  
-	# 
- 
+	#
