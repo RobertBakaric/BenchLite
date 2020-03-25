@@ -82,6 +82,22 @@ sub get_min {
 #---------------------------------------------------------#
 
 
+sub compute_max {
+  my ($self, @arg) = @_;
+
+  foreach my $m (@arg){
+    $self->{_max_} = $m if $m > $self->{_max_};
+  }
+}
+
+sub compute_max {
+  my ($self, @arg) = @_;
+
+  foreach my $m (@arg){
+    $self->{_min_} = $m if $m < $self->{_min_};
+  }
+}
+
 sub compute_mean {
   my ($self, @arg) = @_;
 
