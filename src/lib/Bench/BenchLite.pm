@@ -100,6 +100,7 @@ use Proc::ProcessTable;
 use IO::CaptureOutput qw/capture_exec/;
 use Statistics::Basic qw(:all nofill);
 use Data::Dumper;
+use Statistics::Descriptive qw( :all );
 
 #---------------------------------------------------------#
 #                      CONSTRUCTOR
@@ -119,10 +120,12 @@ sub new {
     $self->{_output_} = "./Bench";
     $self->{_log_} = "Bench.log";
     $self->{_stats_} = 0;
-    $self->{_stats_table_} = %hash;
+    $self->{_stats_table_} = ();
     $self->{_def_name_} = $def_out;
     $self->{_bootstrap_} = 0;
     $self->{_delta_} = 1;
+
+    $self->{_logic_} = 0;
 
 
     bless $self, $class;
@@ -204,18 +207,18 @@ sub benchmark {
 }
 
 
-sub compute_stats{
-
-  my ($self) = shift;
 
 
 
+sub get_summary_stats {
 
+  my ($self) = @_;
 
-
+  return $self->{_stats_table_};
 }
 
-sub get_stats {
+
+sub get_raw_stats {
 
   my ($self, $flag) = @_;
 
@@ -241,6 +244,17 @@ sub get_stats {
 #---------------------------------------------------------#
 
 
+
+sub _compute_summary_stats {
+
+  my ($self) = @_;
+
+
+
+
+  $self->{_summary_table_} = \%hash;
+}
+
 sub _make_table {
 
   my ($self) = @_;
@@ -249,33 +263,87 @@ sub _make_table {
 }
 
 
-sub _load_stats{
+sub _parse_results {
+
+  my ($self, $tab, $waht, $file) = @_;
+
+  my %hash = %{$tab};
+
+  my ($boot, $mes, $x) = (0,0,0);
+  my @log   = ();
+  my @avg   = ();
+  my @cmd   = ();
+
+
+  open (IN, "<", $file) || die "$!";
+
+  while(<IN>){
+    chomp;
+    if (/^#(.*)/){
+      my @head = split("\t", $1);
+      foreach my $col (@head){
+        if ($col eq "Bootstrap"){
+          $boot = $x;
+        }elsif( $col eq "Cmd"){
+          $mes = $x;
+        }
+        $x++;
+      }
+    }else{
+      my @data  = split("\t", $_);
+
+      if ($dat[$boot] < $max){
+        push (@{$tab->{$waht}{"logic"}}, \@log );
+        push (@{$tab->{$waht}{"data"}},  \@avgdat );
+        push (@{$tab->{$waht}{"cmd"}},   \@cmd );
+      }
+      @log   = @data[0..($boot-1)];
+      @avgdat   = $sef->_avrg(@data[$boot..($mes-1)]);
+      @cmd   = @data[$mes..(@data-1)];
+
+
+    }
+  }
+
+
+    push (@{$tab->{$waht}{"logic"}}, \@log );
+    push (@{$tab->{$waht}{"data"}},  \@avgdat );
+    push (@{$tab->{$waht}{"cmd"}},   \@cmd );
+  close IN;
+
+}
+
+
+sub _load_stats {
 
   my ($self) = @_;
 
+  my %table = ();
   # open Runtime
 
-  open (R, "<", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.rtime.log") || die "$!";
+  $self->_parse_results(\%table, "runtime", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.rtime.log");
 
-  while(<R>){
-    chomp;
-    if (/^#(.*)/){
-      @head = split("\t", $1);
-    }
+  $self->_parse_results(\%table, "memory", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.mem.log");
 
+  $self->_parse_results(\%table, "disc", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.disc.log");
+
+
+  $self->{_stats_table_} = \%table;
+
+}
+
+sub _avrg {
+
+  my ($self, @arr) = @_;
+
+  my $cnt = 0;
+  #Welford's algorithm perl
+  for(my $i = 2; $i< @arr;$i++){
 
   }
-
-  close R;
-
-  # oprt memory_usage
-
-  open (M, "<", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.mem.log") || die "$!";
-
-  open (D, "<", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.disc.log") || die "$!";
-
-  # open disc
+  return \@arr
 }
+
 
 sub _measure_memory {
 
@@ -292,14 +360,14 @@ sub _measure_memory {
   open(OM, ">>", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.mem.log") || die "$!";
 
   print OM "#"
-    .join("\t",@{$arg{"cmds"}->{"header"}})
+    .join("\t",@{$arg{"cmds"}->{"header-tags"}})
     ."\tBootstrap"
     ."\tPID"
     ."\tMemAvg(MB)"
     ."\tMemSD(MB)"
     ."\tMemMax(MB)"
-    ."\tCmd"
     ."\tMem(MB)_[$arg{deltaT} sec]"
+    ."\tCmd"
     ."\n" if $arg{"swtch"}->[0] == 0 && $arg{"swtch"}->[1] == 1 ;
 
   print OM ""
@@ -309,8 +377,8 @@ sub _measure_memory {
     ."\t" . mean(@mem)
     ."\t" . stddev(@mem)
     ."\t" . $self->_max(@mem)
-    ."\t" . $arg{"cmds"}->{"cmd"}->{$arg{"swtch"}->[0]}->{"exe"}
     ."\t" . join(",",@mem)
+    ."\t" . $arg{"cmds"}->{"cmd"}->{$arg{"swtch"}->[0]}->{"exe"}
     ."\n";
 
   close OM;
@@ -329,13 +397,13 @@ sub _measure_runtime{
   open(OT, ">>", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.rtime.log") || die "$!";
 
   print OT "#"
-    .join("\t",@{$arg{"cmds"}->{"header"}})
+    .join("\t",@{$arg{"cmds"}->{"header-tags"}})
     ."\tBootstrap"
     ."\tPID"
     ."\tUserTime"
     ."\tSysTime"
     ."\tTotTime"
-    ."\tTool"
+    ."\tCmd"
     ."\n" if $arg{"swtch"}->[0] == 0 && $arg{"swtch"}->[1] == 1 ;
 
   print OT ""
@@ -362,11 +430,11 @@ sub _measure_disc {
   my @flag_res = ();
 
   for (my $q=0; $q<@cmd; $q++){
-    foreach my $flg (@flags) {
-      if ($cmd[$q] eq $flg){
+    for (my $f = 0; $f < @flags; $f++) {
+      if ($cmd[$q] eq $flags[$f]){
         my $d = qx(du -b $cmd[$q+1]);
         $d=~/^(.*?)\s+/;
-        push(@flag_res,$1);
+        $flag_res[$f] = $1;
       }
     }
   }
@@ -375,11 +443,11 @@ sub _measure_disc {
   open(OD, ">>", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.disc.log") || die "$!";
 
   print OD "#"
-    .join("\t",@{$arg{"cmds"}->{"header"}})
+    .join("\t",@{$arg{"cmds"}->{"header-tags"}})
     ."\tBootstrap"
     ."\tPID"
-    ."\tDiscUsage:"
-    .join("\t",@flags)
+    ."\tDiscUsageFlags:"
+    .join("\t",@{$arg{"cmds"}->{"header-flags"}})
     ."\tCmd"
     ."\n" if $arg{"swtch"}->[0] == 0 && $arg{"swtch"}->[1] == 1 ;
 
@@ -424,9 +492,16 @@ sub _parse_script{
       my $c = $1;
       $c =~ s/ //g;
       foreach my $head (split(",", $c)){
-        push(@{$schema{"header"}},$head);
+        push(@{$schema{"header-tags"}},$head);
       }
-    }else{
+    }elsif(/%FlagClasses:(.*)/){
+      my $c = $1;
+      $c =~ s/ //g;
+      foreach my $head (split(",", $c)){
+        push(@{$schema{"header-flags"}},$head);
+      }
+    }
+    else{
       $schema{"cmd"}{$i++}{"exe"} = $_;
     }
   }
@@ -462,7 +537,6 @@ sub _memory_usage() {
 
     my ($self,$pp) = @_;
 
-    print "$pp\n";
     my $t = new Proc::ProcessTable;
     foreach my $got (@{$t->table}) {
         next unless $got->pid eq $pp;
