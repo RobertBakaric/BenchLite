@@ -100,7 +100,7 @@ use Proc::ProcessTable;
 use IO::CaptureOutput qw/capture_exec/;
 use Statistics::Basic qw(:all nofill);
 use Data::Dumper;
-use Statistics::Descriptive qw( :all );
+
 
 #---------------------------------------------------------#
 #                      CONSTRUCTOR
@@ -134,8 +134,9 @@ sub new {
 
 
 #---------------------------------------------------------#
-#                  Object public methods
+#                  Public methods
 #---------------------------------------------------------#
+
 sub benchmark {
 
   my ($self, $arg) = @_;
@@ -145,8 +146,6 @@ sub benchmark {
   $self->_makepath("$self->{_output_}/$self->{_def_name_}");
 
   my $cmds = $self->_parse_script($arg);
-
-  # loop the execution:
 
   print "Benchmarking  ...\n" ;
 
@@ -207,7 +206,9 @@ sub benchmark {
 }
 
 
-
+#---------------------------------------------------------#
+#                       Getters
+#---------------------------------------------------------#
 
 
 sub get_summary_stats {
@@ -227,20 +228,29 @@ sub get_raw_stats {
   }
 
   if ($flag eq "as_string") {
+
     return Dumper($self->{_stats_table_});
+
   }elsif ($flag eq "as_table"){
+
     return $self->_make_table();
+
   }elsif ($flag eq "as_object"){
+
     return $self->{_stats_table_};
+
   }else{
+
     die "$!\n$flag not recognized!\n";
+
   }
+  
 }
 
 
 
 #---------------------------------------------------------#
-#                  Object private methods
+#                  Private methods
 #---------------------------------------------------------#
 
 
@@ -330,18 +340,6 @@ sub _load_stats {
 
   $self->{_stats_table_} = \%table;
 
-}
-
-sub _avrg {
-
-  my ($self, @arr) = @_;
-
-  my $cnt = 0;
-  #Welford's algorithm perl
-  for(my $i = 2; $i< @arr;$i++){
-
-  }
-  return \@arr
 }
 
 
