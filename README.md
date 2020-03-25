@@ -17,17 +17,6 @@ Simple CLI benchmarking tool
 	-f	Monitor flags             : CLI options to be monitored (currently only those taking files are subjected to filesize measurments)
 
 
-	Example of  my.bench file :
-
-
-		#Tool -- comment line
-		tool -i in -o out
-		tool2 -i in2 -o out2
-
-
-	Execute:
-	bench -f "-i -o" -l My_Log_Date -o My_Bench_Out -b 10 -d 10 -s 1  -p my.bench
-
 # Description
 
 	Benchmarking is the practice of comparing processes and performance metrics to
