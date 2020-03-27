@@ -44,7 +44,7 @@ sub compute_stats_matrix {
 
   my ($self, $arg) = @_;
 
-  $self->{_mtx_} = [];
+  $self->{_mtx_} = ();
 
   $self->recompute_stats_matrix($arg);
 
