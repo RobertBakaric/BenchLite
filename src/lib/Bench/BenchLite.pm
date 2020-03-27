@@ -98,7 +98,8 @@ use File::Path qw( make_path );
 use File::Spec;
 use Proc::ProcessTable;
 use IO::CaptureOutput qw/capture_exec/;
-use Statistics::Basic qw(:all nofill);
+use Stats::BenchStats;
+use Stats::BenchMatrix;
 use Data::Dumper;
 
 
@@ -112,7 +113,7 @@ sub new {
     my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime();
 
     my %hash = ();
-    my $def_out = "" . $sec . "_" ."$mday" ."_" . ($mon+1) . "_" .  ($year%100);
+    my $def_out = "" . $sec . "-" .$min. "_" ."$mday" ."_" . ($mon+1) . "_" .  ($year%100);
 
     my $self->{_name_}   = "Bench";
     $self->{_date_} = $sec . "s" . $min . "m" . $hour . "h" .   $mday . "d" . ($mon+1) . "m" . ($year%100) . "y";
@@ -146,17 +147,21 @@ sub benchmark {
   $self->_makepath("$self->{_output_}/$self->{_def_name_}");
 
   my $cmds = $self->_parse_script($arg);
+  my ($ptout, $out) = ("","");
 
   print "Benchmarking  ...\n" ;
 
   foreach my $c (sort {$a <=> $b} keys %{$cmds->{"cmd"}}) {
     my $pid = $$;
-    print "$pid -- $cmds->{cmd}->{$c}->{exe} ... ";
+    $ptout  = "$cmds->{cmd}->{$c}->{exe}";
 
     for (my $b = 1; $b <= $self->{_bootstrap_}; $b++){
 
-      my $forks = 0;
-      for (1 .. 1) {
+      $out =  "$ptout (bootstrap: $b) ... ";
+      print "$out\n";
+
+#      my $forks = 0;
+#      for (1 .. 1) {
         my $pid = fork;
         if (not defined $pid) {
            warn 'Could not fork';
@@ -164,7 +169,7 @@ sub benchmark {
         }
 
         if ($pid) {
-          $forks++;
+#          $forks++;
           # Memory
           $self->_measure_memory(
                          "deltaT" => $self->{_delta_},
@@ -172,6 +177,7 @@ sub benchmark {
                          "cmds"   => $cmds,
                          "swtch"  => [$c,$b]
                          );
+          sleep $self->{_delta_};
         } else {
           my $ppd = $$ + 2;
           # Time
@@ -186,16 +192,18 @@ sub benchmark {
                           "cmds"   => $cmds,
                           "swtch"  => [$c,$b]
                           );
+          sleep $self->{_delta_};
           exit;
         }
       }
 
-      for (1 .. $forks) {
-         my $pid = wait();
-      }
-    }
+#      for (1 .. $forks) {
+         my $pi = wait();
+         #print "Waited for $pi\n";
+#      }
+#    }
 
-    print " Done! \n";
+    print "$out Done! \n";
 
   }
 
@@ -244,7 +252,7 @@ sub get_raw_stats {
     die "$!\n$flag not recognized!\n";
 
   }
-  
+
 }
 
 
@@ -259,11 +267,10 @@ sub _compute_summary_stats {
 
   my ($self) = @_;
 
-
-
-
-  $self->{_summary_table_} = \%hash;
+  $self->{_summary_table_} = "";
 }
+
+
 
 sub _make_table {
 
@@ -277,12 +284,8 @@ sub _parse_results {
 
   my ($self, $tab, $waht, $file) = @_;
 
-  my %hash = %{$tab};
-
   my ($boot, $mes, $x) = (0,0,0);
-  my @log   = ();
-  my @avg   = ();
-  my @cmd   = ();
+  my $matrix  = Stats::BenchMatrix->new();
 
 
   open (IN, "<", $file) || die "$!";
@@ -294,31 +297,36 @@ sub _parse_results {
       foreach my $col (@head){
         if ($col eq "Bootstrap"){
           $boot = $x;
-        }elsif( $col eq "Cmd"){
+        }elsif( $col eq "Cmd" || $col =~ /Mem\(/){
           $mes = $x;
+          last;
         }
         $x++;
       }
     }else{
       my @data  = split("\t", $_);
 
-      if ($dat[$boot] < $max){
+      my @log    = @data[0..($boot-1)];
+      my @tmpdat = @data[($boot+2)..($mes-1)];
+      my @cmd    = @data[$mes..(@data-1)];
+
+      $matrix->recompute_stats_matrix(\@tmpdat);
+
+      if ($data[$boot]  == $self->{_bootstrap_}){
+
+        my @avgdat = ();
+        foreach my $sts (@{$matrix->get_stats_matrix()}){
+          push(@avgdat, $sts->get_mean(), $sts->get_sd());
+        }
+
         push (@{$tab->{$waht}{"logic"}}, \@log );
+        push (@cmd, $data[$boot], $data[$boot+1] );
         push (@{$tab->{$waht}{"data"}},  \@avgdat );
         push (@{$tab->{$waht}{"cmd"}},   \@cmd );
       }
-      @log   = @data[0..($boot-1)];
-      @avgdat   = $sef->_avrg(@data[$boot..($mes-1)]);
-      @cmd   = @data[$mes..(@data-1)];
-
-
     }
   }
 
-
-    push (@{$tab->{$waht}{"logic"}}, \@log );
-    push (@{$tab->{$waht}{"data"}},  \@avgdat );
-    push (@{$tab->{$waht}{"cmd"}},   \@cmd );
   close IN;
 
 }
@@ -347,12 +355,13 @@ sub _measure_memory {
 
   my ($self, %arg) = @_;
 
+  my $stats = Stats::BenchStats->new();
   my $mem = 1;
   my @mem = ();
   while ($mem > 0) {
     sleep $arg{"deltaT"};
     $mem = $self->_memory_usage($arg{"pid"});
-    push(@mem,$mem);
+    push(@mem,$mem) if $mem;
   }
 
   open(OM, ">>", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.mem.log") || die "$!";
@@ -368,16 +377,21 @@ sub _measure_memory {
     ."\tCmd"
     ."\n" if $arg{"swtch"}->[0] == 0 && $arg{"swtch"}->[1] == 1 ;
 
+  $stats->compute_sd(@mem);
+  $stats->compute_max(@mem);
+
   print OM ""
     .join("\t",@{$arg{"cmds"}->{"cmd"}->{$arg{"swtch"}->[0]}->{"tags"}})
     ."\t" . $arg{"swtch"}->[1]
     ."\t" . $arg{"pid"}
-    ."\t" . mean(@mem)
-    ."\t" . stddev(@mem)
-    ."\t" . $self->_max(@mem)
+    ."\t" . $stats->get_mean(@mem)
+    ."\t" . $stats->get_sd(@mem)
+    ."\t" . $stats->get_max(@mem)
     ."\t" . join(",",@mem)
     ."\t" . $arg{"cmds"}->{"cmd"}->{$arg{"swtch"}->[0]}->{"exe"}
     ."\n";
+
+
 
   close OM;
 
@@ -461,7 +475,7 @@ sub _measure_disc {
 
 }
 
-
+## This should go into seperate module
 sub _parse_script{
 
   my ($self,$arg) = @_;
@@ -518,17 +532,6 @@ sub _makepath {
   }
 }
 
-
-sub _max{
-
-  my ($self, @arg) = @_;
-
-  my $max = 0;
-  foreach my $m (@arg){
-    $max = $m if $m > $max;
-  }
-  return $max;
-}
 
 
 sub _memory_usage() {
