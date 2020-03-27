@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 use Getopt::Long;
-
+use Data::Dumper;
 use lib "../lib";
 
 #---------------------------------------------------------#
@@ -53,9 +53,10 @@ if($help  || !$script ){
 #                     Set defaults
 #---------------------------------------------------------#
 
+$boot = 1 unless $boot;
 
 # bootstrap mode set to 0 means only a single cmd execution will be preformed
-$bench->{_bootstrap_} = 1;
+$bench->{_bootstrap_} = $boot;
 
 # define the output path
 $bench->{_output_} = "./Benchmarks";
@@ -64,3 +65,8 @@ $bench->{_delta_} = 1;
 
 # execute *.bench script
 $bench->benchmark($script);
+
+# get benchmark results
+my $table  = $bench->get_summary_stats();
+
+print Dumper($table);
