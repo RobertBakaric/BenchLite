@@ -18,7 +18,7 @@
 #
 #
 
-package Bench::BenchLite;
+package BenchLite::Core;
 
 
 =head1 NAME
@@ -98,8 +98,11 @@ use File::Path qw( make_path );
 use File::Spec;
 use Proc::ProcessTable;
 use IO::CaptureOutput qw/capture_exec/;
-use Statistics::Basic qw(:all nofill);
+use BenchLite::Stats::Summary;
+use BenchLite::Stats::Matrix;
+use BenchLite::UI;
 use Data::Dumper;
+
 
 #---------------------------------------------------------#
 #                      CONSTRUCTOR
@@ -109,21 +112,26 @@ sub new {
     my ($class) = @_;
 
     my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime();
+    my $time = $sec."s".$min."m".$hour."h".$mday."d".($mon+1)."m".($year%100)."y";
 
-    my %hash = ();
-    my $def_out = "" . $sec . "_" ."$mday" ."_" . ($mon+1) . "_" .  ($year%100);
+    #-----------------------Sandbox-----------------------#
+    my $self->{_name_}     =  "Bench";
+    $self->{_date_}        =  $time;
+    $self->{_suffix_}      =  ".bench";
+    $self->{_output_}      =  "./Bench";
+    $self->{_def_name_}    =  $time;
+    $self->{_log_}         =  "Bench.log";
 
-    my $self->{_name_}   = "Bench";
-    $self->{_date_} = $sec . "s" . $min . "m" . $hour . "h" .   $mday . "d" . ($mon+1) . "m" . ($year%100) . "y";
-    $self->{_suffix_} = ".bench";
-    $self->{_output_} = "./Bench";
-    $self->{_log_} = "Bench.log";
-    $self->{_stats_} = 0;
-    $self->{_stats_table_} = %hash;
-    $self->{_def_name_} = $def_out;
-    $self->{_bootstrap_} = 0;
-    $self->{_delta_} = 1;
+    #------------------------Stats------------------------#
+    $self->{_stats_}       =  0;
+    $self->{_stats_table_} =  ();
 
+    #---------------------Def. values---------------------#
+    $self->{_bootstrap_}   =  0;
+    $self->{_delta_}       =  1;
+
+    #---------------------Shell Script--------------------#
+    $self->{_script_}      =  {};
 
     bless $self, $class;
     return $self;
@@ -131,8 +139,9 @@ sub new {
 
 
 #---------------------------------------------------------#
-#                  Object public methods
+#                  Public methods
 #---------------------------------------------------------#
+
 sub benchmark {
 
   my ($self, $arg) = @_;
@@ -141,62 +150,58 @@ sub benchmark {
 
   $self->_makepath("$self->{_output_}/$self->{_def_name_}");
 
-  my $cmds = $self->_parse_script($arg);
+  my $script = BenchLite::UI->new();
 
-  # loop the execution:
+  $script->parse_script($arg);
+  $self->{_script_} = $script->get_script();
+
+  print Dumper($self->{_script_});
+
+
+  # $self->_parse_script($arg);
+  my ($ptout, $out) = ("","");
 
   print "Benchmarking  ...\n" ;
 
-  foreach my $c (sort {$a <=> $b} keys %{$cmds->{"cmd"}}) {
+  foreach my $c (sort {$a <=> $b} keys %{$self->{_script_}->{"cmd"}}) {
+
     my $pid = $$;
-    print "$pid -- $cmds->{cmd}->{$c}->{exe} ... ";
+    $ptout  = "$self->{_script_}->{cmd}->{$c}->{exe}";
 
     for (my $b = 1; $b <= $self->{_bootstrap_}; $b++){
 
-      my $forks = 0;
-      for (1 .. 1) {
+      $out =  "$ptout (Iter. No.: $b) ... ";
+      print "$out\r";
+
         my $pid = fork;
+
         if (not defined $pid) {
            warn 'Could not fork';
            next;
         }
 
         if ($pid) {
-          $forks++;
-          # Memory
-          $self->_measure_memory(
-                         "deltaT" => $self->{_delta_},
-                         "pid"    => $pid+2,
-                         "cmds"   => $cmds,
-                         "swtch"  => [$c,$b]
-                         );
+
+          $self->_measure_memory( $pid+2, $c, $b);
+          sleep $self->{_delta_};
+
         } else {
+
           my $ppd = $$ + 2;
           # Time
-          $self->_measure_runtime(
-                          "pid"    => $ppd,
-                          "cmds"   => $cmds,
-                          "swtch"  => [$c,$b]
-                          );
+          $self->_measure_runtime( $ppd, $c, $b );
           # Disc
-          $self->_measure_disc(
-                          "pid"    => $ppd,
-                          "cmds"   => $cmds,
-                          "swtch"  => [$c,$b]
-                          );
+          $self->_measure_disc( $ppd, $c, $b );
+
+          sleep $self->{_delta_};
           exit;
         }
       }
 
-      for (1 .. $forks) {
-         my $pid = wait();
-      }
-    }
+      my $pi = wait();
 
-    print " Done! \n";
-
+      print "$out Done! \n";
   }
-
 
   $self->_load_stats();
 
@@ -204,18 +209,20 @@ sub benchmark {
 }
 
 
-sub compute_stats{
-
-  my ($self) = shift;
-
-
+#---------------------------------------------------------#
+#                       Getters
+#---------------------------------------------------------#
 
 
+sub get_summary_stats {
 
+  my ($self) = @_;
 
+  return $self->{_stats_table_};
 }
 
-sub get_stats {
+
+sub get_raw_stats {
 
   my ($self, $flag) = @_;
 
@@ -224,21 +231,38 @@ sub get_stats {
   }
 
   if ($flag eq "as_string") {
+
     return Dumper($self->{_stats_table_});
+
   }elsif ($flag eq "as_table"){
+
     return $self->_make_table();
+
   }elsif ($flag eq "as_object"){
+
     return $self->{_stats_table_};
+
   }else{
     die "$!\n$flag not recognized!\n";
   }
+
 }
 
 
 
 #---------------------------------------------------------#
-#                  Object private methods
+#                  Private methods
 #---------------------------------------------------------#
+
+
+
+sub _compute_raw_stats {
+
+  my ($self) = @_;
+
+  $self->{_summary_table_} = "";
+}
+
 
 
 sub _make_table {
@@ -249,68 +273,116 @@ sub _make_table {
 }
 
 
-sub _load_stats{
+sub _compute_summary_stats {
+
+  my ($self, $tab, $waht, $file) = @_;
+
+  my ($boot, $mes, $x) = (0,0,0);
+  my $matrix  = BenchLite::Stats::Matrix->new();
+
+
+  open (IN, "<", $file) || die "$!";
+
+  while(<IN>){
+
+    chomp;
+    if (/^#(.*)/){
+      my @head = split("\t", $1);
+
+      foreach my $col (@head){
+        if ($col eq "Bootstrap"){
+          $boot = $x;
+        }elsif( $col eq "Cmd" || $col =~ /Mem\(/){
+          $mes = $x;
+          last;
+        }
+        $x++;
+      }
+
+    }else{
+      my @data  = split("\t", $_);
+
+      my @log    = @data[0..($boot-1)];
+      my @tmpdat = @data[($boot+2)..($mes-1)];
+      my @cmd    = @data[$mes..(@data-1)];
+
+      $matrix->recompute_stats_matrix(\@tmpdat);
+
+      if ($data[$boot]  == $self->{_bootstrap_}){
+
+        my @avgdat = ();
+        foreach my $sts (@{$matrix->get_stats_matrix()}){
+          push(@avgdat, $sts->get_mean(), $sts->get_sd());
+        }
+
+        push (@{$tab->{$waht}{"logic"}}, \@log );
+        push (@cmd, $data[$boot], $data[$boot+1] );
+        push (@{$tab->{$waht}{"data"}},  \@avgdat );
+        push (@{$tab->{$waht}{"cmd"}},   \@cmd );
+      }
+    }
+  }
+
+  close IN;
+
+}
+
+
+sub _load_stats {
 
   my ($self) = @_;
 
-  # open Runtime
+  my %table = ();
+  $self->_compute_summary_stats(\%table, "runtime", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.rtime.log");
 
-  open (R, "<", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.rtime.log") || die "$!";
+  $self->_compute_summary_stats(\%table, "memory", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.mem.log");
 
-  while(<R>){
-    chomp;
-    if (/^#(.*)/){
-      @head = split("\t", $1);
-    }
+  $self->_compute_summary_stats(\%table, "disc", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.disc.log");
 
+  $self->{_stats_table_} = \%table;
 
-  }
-
-  close R;
-
-  # oprt memory_usage
-
-  open (M, "<", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.mem.log") || die "$!";
-
-  open (D, "<", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.disc.log") || die "$!";
-
-  # open disc
 }
+
 
 sub _measure_memory {
 
-  my ($self, %arg) = @_;
+  my ($self, @arg) = @_;
 
+  my $stats = BenchLite::Stats::Summary->new();
   my $mem = 1;
   my @mem = ();
+
   while ($mem > 0) {
-    sleep $arg{"deltaT"};
-    $mem = $self->_memory_usage($arg{"pid"});
-    push(@mem,$mem);
+    sleep $self->{_delta_};
+    $mem = $self->_memory_usage($arg[0]);
+    push(@mem,$mem) if $mem;
   }
 
   open(OM, ">>", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.mem.log") || die "$!";
 
   print OM "#"
-    .join("\t",@{$arg{"cmds"}->{"header"}})
+    .join("\t",@{$self->{_script_}->{"head"}->{"tags"}})
     ."\tBootstrap"
     ."\tPID"
     ."\tMemAvg(MB)"
     ."\tMemSD(MB)"
     ."\tMemMax(MB)"
+    ."\tMem(MB)_[$self->{_delta_} sec]"
     ."\tCmd"
-    ."\tMem(MB)_[$arg{deltaT} sec]"
-    ."\n" if $arg{"swtch"}->[0] == 0 && $arg{"swtch"}->[1] == 1 ;
+    ."\n" if $arg[1] == 0 && $arg[2] == 1 ;
+
+  $stats->compute_sd(@mem);
+  $stats->compute_max(@mem);
 
   print OM ""
-    .join("\t",@{$arg{"cmds"}->{"cmd"}->{$arg{"swtch"}->[0]}->{"tags"}})
-    ."\t" . $arg{"swtch"}->[1]
-    ."\t" . $arg{"pid"}
-    ."\t" . mean(@mem)
-    ."\t" . stddev(@mem)
-    ."\t" . $self->_max(@mem)
-    ."\t" . $arg{"cmds"}->{"cmd"}->{$arg{"swtch"}->[0]}->{"exe"}
+    .join("\t",@{$self->{_script_}->{"cmd"}->{$arg[1]}->{"tags"}})
+    ."\t" . $arg[2]
+    ."\t" . $arg[0]
+    ."\t" . $stats->get_mean(@mem)
+    ."\t" . $stats->get_sd(@mem)
+    ."\t" . $stats->get_max(@mem)
     ."\t" . join(",",@mem)
+    ."\t" . $self->{_script_}->{"cmd"}->{$arg[1]}->{"exe"}
     ."\n";
 
   close OM;
@@ -319,33 +391,35 @@ sub _measure_memory {
 
 sub _measure_runtime{
 
-  my ($self, %arg) = @_;
+  my ($self, @arg) = @_;
 
   my $start_time = [Time::HiRes::gettimeofday()];
-  system("$arg{cmds}->{cmd}->{$arg{swtch}->[0]}->{exe} 2> $self->{_output_}/$self->{_def_name_}/$self->{_log_}");
+  system("$self->{_script_}->{cmd}->{$arg[1]}->{exe} 2> $self->{_output_}/$self->{_def_name_}/$self->{_log_}");
   my ($user, $system, $child_user, $child_system) = times;
   my $clock =  Time::HiRes::tv_interval($start_time);
+
+
 
   open(OT, ">>", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.rtime.log") || die "$!";
 
   print OT "#"
-    .join("\t",@{$arg{"cmds"}->{"header"}})
+    .join("\t",@{$self->{_script_}->{"head"}->{"tags"}})
     ."\tBootstrap"
     ."\tPID"
     ."\tUserTime"
     ."\tSysTime"
     ."\tTotTime"
-    ."\tTool"
-    ."\n" if $arg{"swtch"}->[0] == 0 && $arg{"swtch"}->[1] == 1 ;
+    ."\tCmd"
+    ."\n" if $arg[1] == 0 && $arg[2] == 1 ;
 
   print OT ""
-    .join("\t",@{$arg{"cmds"}->{"cmd"}->{$arg{"swtch"}->[0]}->{"tags"}})
-    ."\t" . $arg{"swtch"}->[1]
-    ."\t" . $arg{"pid"}
+    .join("\t",@{$self->{_script_}->{"cmd"}->{$arg[1]}->{"tags"}})
+    ."\t" . $arg[2]
+    ."\t" . $arg[0]
     ."\t" . $child_user
     ."\t" . $child_system
     ."\t" . $clock
-    ."\t" . $arg{"cmds"}->{"cmd"}->{$arg{"swtch"}->[0]}->{"exe"}
+    ."\t" . $self->{_script_}->{"cmd"}->{$arg[1]}->{"exe"}
     ."\n";
 
   close OT;
@@ -355,18 +429,18 @@ sub _measure_runtime{
 
 sub _measure_disc {
 
-  my ($self,%arg) = @_;
+  my ($self,@arg) = @_;
 
-  my @flags = @{$arg{"cmds"}->{"cmd"}->{$arg{"swtch"}->[0]}->{"flags"}};
-  my @cmd   = split(" ",$arg{"cmds"}->{"cmd"}->{$arg{"swtch"}->[0]}->{"exe"});
+  my @flags = @{$self->{_script_}->{"cmd"}->{$arg[1]}->{"flags"}};
+  my @cmd   = split(" ",$self->{_script_}->{"cmd"}->{$arg[1]}->{"exe"});
   my @flag_res = ();
 
   for (my $q=0; $q<@cmd; $q++){
-    foreach my $flg (@flags) {
-      if ($cmd[$q] eq $flg){
+    for (my $f = 0; $f < @flags; $f++) {
+      if ($cmd[$q] eq $flags[$f]){
         my $d = qx(du -b $cmd[$q+1]);
         $d=~/^(.*?)\s+/;
-        push(@flag_res,$1);
+        $flag_res[$f] = $1;
       }
     }
   }
@@ -375,66 +449,25 @@ sub _measure_disc {
   open(OD, ">>", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.disc.log") || die "$!";
 
   print OD "#"
-    .join("\t",@{$arg{"cmds"}->{"header"}})
+    .join("\t",@{$self->{_script_}->{"head"}->{"tags"}})
     ."\tBootstrap"
     ."\tPID"
-    ."\tDiscUsage:"
-    .join("\t",@flags)
+    ."\tDiscUsageFlags:"
+    .join("\t",@{$self->{_script_}->{"head"}->{"flags"}})
     ."\tCmd"
-    ."\n" if $arg{"swtch"}->[0] == 0 && $arg{"swtch"}->[1] == 1 ;
+    ."\n" if $arg[1] == 0 && $arg[2] == 1 ;
 
   print OD ""
-    .join("\t",@{$arg{"cmds"}->{"cmd"}->{$arg{"swtch"}->[0]}->{"tags"}})
-    ."\t" . $arg{"swtch"}->[1]
-    ."\t" . $arg{"pid"}
+    .join("\t",@{$self->{_script_}->{"cmd"}->{$arg[1]}->{"tags"}})
+    ."\t" . $arg[2]
+    ."\t" . $arg[0]
     ."\t" . join("\t",@flag_res)
-    ."\t" . $arg{"cmds"}->{"cmd"}->{$arg{"swtch"}->[0]}->{"exe"}
+    ."\t" . $self->{_script_}->{"cmd"}->{$arg[1]}->{"exe"}
     ."\n";
 
   close OD;
 
 }
-
-
-sub _parse_script{
-
-  my ($self,$arg) = @_;
-
-  open (SC, "<", $arg) || die "$!";
-
-  my %schema = ();
-  my $i = 0;
-
-  while (<SC>){
-    chomp;
-    next if /#/ || /^$/ || /^ *$/;
-    if (/%Tags:(.*)/){
-      my $t = $1;
-      $t =~ s/ //g;
-      foreach my $tag (split(",", $t)){
-        push(@{$schema{"cmd"}{$i}{"tags"}},$tag);
-      }
-    }elsif(/%Flags:(.*)/){
-      my $f = $1;
-      $f =~ s/ //g;
-      foreach my $flag (split(",", $f)){
-        push(@{$schema{"cmd"}{$i}{"flags"}},$flag);
-      }
-    }elsif(/%TagClasses:(.*)/){
-      my $c = $1;
-      $c =~ s/ //g;
-      foreach my $head (split(",", $c)){
-        push(@{$schema{"header"}},$head);
-      }
-    }else{
-      $schema{"cmd"}{$i++}{"exe"} = $_;
-    }
-  }
-  close SC;
-
-  return \%schema;
-}
-
 
 sub _makepath {
 
@@ -446,23 +479,11 @@ sub _makepath {
 }
 
 
-sub _max{
-
-  my ($self, @arg) = @_;
-
-  my $max = 0;
-  foreach my $m (@arg){
-    $max = $m if $m > $max;
-  }
-  return $max;
-}
-
 
 sub _memory_usage() {
 
     my ($self,$pp) = @_;
 
-    print "$pp\n";
     my $t = new Proc::ProcessTable;
     foreach my $got (@{$t->table}) {
         next unless $got->pid eq $pp;
