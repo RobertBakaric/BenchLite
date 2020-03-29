@@ -11,8 +11,8 @@ use lib "../lib";
 #---------------------------------------------------------#
 
 # construct object manager
-use Bench::BenchLite;
-my $bench = Bench::BenchLite->new();
+use BenchLite::Core;
+my $bench = BenchLite::Core->new();
 
 #---------------------------------------------------------#
 #                      CLI
