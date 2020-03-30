@@ -35,7 +35,7 @@ Simple CLI benchmarking tool
 # Author
 
 	Robert Bakaric <robertbakaric@zoho.com>
-	Neva Skrabar <>
+	Neva Skrabar <neva.skrabar@gmail.com>
 
 # License
 

@@ -16,22 +16,136 @@
 #  MA 02110-1301, USA.
 #
 #
-install_load <- function (package1, ...)  {
 
-   # convert arguments to vector
-   packages <- c(package1, ...)
+package BenchLite::Plot::Utility;
+#---------------------------------------------------------#
+#                     Libraries
+#---------------------------------------------------------#
 
-   # start loop to determine if each package is installed
-   for(package in packages){
+use strict;
+use warnings;
+use Data::Dumper;
+use BenchLite::Plot::Runtime;
 
-       # if package is installed locally, load
-       if(package %in% rownames(installed.packages()))
-          do.call('library', list(package))
 
-       # if package is not installed locally, download, then load
-       else {
-          install.packages(package)
-          do.call("library", list(package))
-       }
-   }
+#---------------------------------------------------------#
+#                      CONSTRUCTOR
+#---------------------------------------------------------#
+
+sub new {
+    my ($class) = @_;
+
+    #------------------------DATA-------------------------#
+    my $self->{_data_}      = {};
+    $self->{_R_} = ();
+    $self->{_libs_} = [
+      "ggplot2",
+      "grid",
+      "gridExtra",
+      "ggpubr",
+      "tidyverse",
+      "scales"
+    ];
+
+
+    #-----------------------OUTPUT------------------------#
+    $self->{_output_}       = "./";
+
+    bless $self, $class;
+    return $self;
 }
+
+
+#---------------------------------------------------------#
+#                       Methods
+#---------------------------------------------------------#
+
+
+sub plot {
+
+  my ($self,$select, $data) = @_;
+
+  #check
+  if (!$self->_check_R_libs()){
+    print STDERR "Loading libraries failed!";
+  };
+
+
+  my $run_R = BenchLite::Plot::Runtime->new();
+  #my $disc_R = BenchLite::Plot::Disc->new();
+  #my $mem_R = BenchLite::Plot::Memory->new();
+
+
+  $run_R->{_R_} = $self->{_R_};
+
+  my ($r,$o,$b) = (0,0,0);
+  my @runs = ();
+  my @mems = ();
+  my @dscs = ();
+  # load data
+
+  foreach my $plot (keys %{$select->{'plot'}}){
+
+    if ($plot eq 'runtime'){
+      my @runplots =  sort{ $a <=> $b } keys %{$select->{'plot'}->{$plot}};
+      my $stop = @runplots;
+      my $tr  = $stop % 3;
+      my $st = ($tr==0) ? ($stop-3) : ($stop-$tr);
+      foreach my $rt_plot (@runplots){
+        push(@runs, $run_R->plot($r++, (($r>$st)?(1):(0)), $select->{'plot'}->{$plot}->{$rt_plot}, $data, "Test_$rt_plot\_$r"));
+      }
+    }elsif ($plot eq 'disc'){
+
+    }elsif($plot eq 'memory'){
+
+    }else{
+      print "I do not recognize $plot format\n";
+    }
+
+  }
+
+
+  # plot
+  $run_R->plot_summary(@runs);
+  #$self->plot_memory();
+  #$self->plot_disc();
+
+  return $self->{_output_};
+}
+
+
+
+
+#---------------------------------------------------------#
+#                   Private Methods
+#---------------------------------------------------------#
+
+
+sub _check_R_libs {
+
+  my ($self) = @_;
+
+  my $ok = 0;
+  my $check_fn  = << "R";
+  install_load <- function (package, ...)  {
+    if(package %in% rownames(installed.packages()))
+      do.call('library', list(package))
+    else {
+      install.packages(package)
+      do.call("library", list(package))
+    }
+  }
+R
+
+  $self->{_R_}->run($check_fn);
+
+  foreach my $lib (@{$self->{_libs_}}){
+    my $line = "install_load(\'$lib\')";
+    $ok = $self->{_R_}->run($line);
+  }
+  return  ($ok) ? (1) : (0);
+}
+
+
+
+1;
