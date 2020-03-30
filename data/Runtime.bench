@@ -1,0 +1,27 @@
+# My bench sets
+
+# Plotting logic:
+%TagClasses:    Tool,    NGS
+#------------+------+-------+
+%PlotRuntime:  T1/T2,      -
+%PlotRuntime:     T1,   HiSeq
+
+%FlagClasses: In, Out
+
+# Benchmark
+
+%Tags:   T1, HiSeq
+%Flags:   -i,>
+perl /home/robert/projects/Algorithms/BenchLite/data/sleep.pl -i /home/robert/projects/Algorithms/BenchLite/data/in -x 10000  > out
+
+%Tags:   T1, HiSeq
+%Flags:   -i,-o
+perl /home/robert/projects/Algorithms/BenchLite/data/sleep.pl -i /home/robert/projects/Algorithms/BenchLite/data/in.1 -x 100000  -o out
+
+%Tags:   T2, HiSeq
+%Flags:   -i,-o
+perl /home/robert/projects/Algorithms/BenchLite/data/sleep.pl -i /home/robert/projects/Algorithms/BenchLite/data/in -x 40000  -o out
+
+%Tags:   T2, HiSeq
+%Flags:   -i,-o
+perl /home/robert/projects/Algorithms/BenchLite/data/sleep.pl -i /home/robert/projects/Algorithms/BenchLite/data/in.1 -x 200000  -o out

@@ -16,21 +16,24 @@ if($help  || !$script ){
   exit(0);
 }
 
+my $limit = int(rand(3)+1) * $limit;
+
 my $d = int($limit/10);
 my @a = ();
 for (my $i = 0; $i<$limit;$i++){
   if ($i%$d == 0){
-    sleep 1;
+     @a = ();
   }
   push(@a,$i);
 }
 
-sleep 2;
 
 if ($out){
   open (O, ">", $out) || die "$!";
-  print O "@a";
+  print O "@a[0..1000]";
   close O;
 }else{
   print  "@a";
 }
+
+sleep 1;
