@@ -54,24 +54,9 @@ sub new {
 
 # note to myself : edit check-pl to include R dependencies
 
-
-## logic
-#
-#  [[-,a,-,b],[-,a,-,B],[-,A,-,b],[-,A,-,B]]
-#
-#  data
-#
-#
-#  labels
-#
-#
-#  scale
-#
-#  x= "log2_1000" -> log2(x/1000)  || 1000  -> x/1000
-
 sub plot {
 
-  my ($self,$s,$lines,$data,$title) = @_;
+  my ($self,$s,$p,$lines,$data,$title) = @_;
 
     # make plot function
 
@@ -83,12 +68,6 @@ sub plot {
     my @ysd   = ();
     my @xval  = ();
     my @xsd   = ();
-    print "\n\n\n";
-
-print Dumper($lines);
-print "\n\n\n";
-print Dumper($data->{'runtime'}->{'logic'});
-print "\n\n\n";
 
 
     foreach my $line (@{$lines}){
@@ -98,15 +77,10 @@ print "\n\n\n";
         for(my $j = 0; $j< @{$data->{'runtime'}->{'logic'}}; $j++){
           if ($data->{'runtime'}->{'logic'}->[$j]->[$i] eq $line->[$i] || $line->[$i] eq '-'){
             push (@sel, $j);
-            print " $data->{'runtime'}->{'logic'}->[$j]->[$i] eq $line->[$i] \
-            $data->{'runtime'}->{'data'}->[$j]->[4]; # runtime \
-            $data->{'runtime'}->{'data'}->[$j]->[5]; # runtime sd \
-            \n";
           }
         }
         if (@selection > 0) {
           my @isect = intersect(@selection, @sel);
-          print "(@isect), (@sel), (@selection) \n";
           @selection = @isect;
         }else{
           @selection =@sel;
@@ -129,7 +103,6 @@ print "\n\n\n";
     my $y = "Runtime";
     my $group_by = "Identifier";
 
-
     $self->{_R_}->set("$group_by", \@name);
     $self->{_R_}->set("$y", \@yval);
     $self->{_R_}->set("$y\_sd", \@ysd);
@@ -141,43 +114,42 @@ print "\n\n\n";
 
     $self->{_R_}->run(
       $self->_make_plot_obj(
-        $x, $y, $group_by, "$x ($self->{_x_unit_})","$y ($self->{_y_unit_})", "$title"
+        $x, $y, $group_by, "$x ($self->{_x_unit_})","$y ($self->{_y_unit_})", "$title", $s, $p
       )
     );
 
-    $self->{_R_}->run("p$s <- make_runtime_plot(data) + xlab(\"\") "); #
-    $self->{_R_}->run("p$s");
+    $self->{_R_}->run("p$s <- make_runtime_plot(data)"); #
+
+
+  return "p$s";
 
 }
 
 
-# remember to check for dependencies!!
-#### NOt finished work in progress ...!!!!!!!!
-=pod
-sub _plot {
+sub plot_summary {
 
-  my ($self ) = @_;
+  my ($self, @arg) = @_;
 
+  my $col = (@arg % 3);
+  my $row = int(@arg / 3) + 1;
+  my $width = $col * 4;
+  my $highth= $row * 4;
 
-my $Rcode << "R";
+  my $in = join(",", @arg);
 
-svg("Runtime.svg",width=10, height=8)
-
-pp <- ggarrange(p1, p3, p5, p2, p4, p6, ncol=3, nrow=2, align = "v", common.legend = TRUE, legend="bottom")
-text = paste("       Lossy","              Complete", sep = "                                          ")
-annotate_figure(pp,
-                top = text_grob("Common title", face = "bold", size = 16),
-                left = text_grob(text, color = "black", rot = 90, size = 14))
-dev.off()
-
-
+  my $Rcode = << "R";
+  svg(\"Runtime.svg\",width=$width, height=$highth)
+  pp <- ggarrange($in, ncol=$col, nrow=$row, align = \"v\", common.legend = TRUE, legend=\"bottom\")
+  annotate_figure(pp,
+                  top = text_grob(\"Runtime Analyses\", face = \"bold\", size = 16),
+  #                left = text_grob(text, color = \"black\", rot = 90, size = 14)
+                  )
+  dev.off()
 R
 
-
+  $self->{_R_}->run($Rcode);
 
 }
-=cut
-
 
 sub _set_dafaults{
 
@@ -211,19 +183,20 @@ sub _set_dafaults{
 
 sub _make_plot_obj {
 
-  my ($self,$x,$y,$group_by,$x_lab,$y_lab, $title) = @_;
+  my ($self,$x,$y,$group_by,$x_lab,$y_lab, $title, $s,$p) = @_;
 
   my $x_scale = "";
   my $y_scale  = "";
   my $annotation = "";
 
+  $y_lab = "" if ($s % 3 == 1);
+  $x_lab = "" if ($p == 0);
 
   if ($self->{_x_scale_} =~/log(\d+)/){
     $x_scale = "scale_x_$self->{_x_scale_}(breaks = trans_breaks(\"$self->{_x_scale_}\", function(x) $1^x), labels = trans_format(\"$self->{_x_scale_}\", math_format($1^.x))) + ";
   }else{
     $x_scale = "";
   }
-
 
   if ($self->{_y_scale_} =~/log(\d+)/){
     $y_scale = "scale_y_$self->{_x_scale_}(breaks = trans_breaks(\"$self->{_y_scale_}\", function(x) $1^x), labels = trans_format(\"$self->{_y_scale_}\", math_format($1^.x))) +";
@@ -254,8 +227,6 @@ sub _make_plot_obj {
 R
 
 }
-
-
 
 
 1;
