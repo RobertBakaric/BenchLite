@@ -1,4 +1,3 @@
-#!/usr/bin/perl
 #  Copyright 2020 Robert Bakaric and Neva Skrabar
 #
 #  This program is free software; you can redistribute it and/or modify
@@ -101,6 +100,8 @@ use IO::CaptureOutput qw/capture_exec/;
 use BenchLite::Stats::Summary;
 use BenchLite::Stats::Matrix;
 use BenchLite::UI;
+use BenchLite::Plot::Utility;
+use Statistics::R;
 use Data::Dumper;
 
 
@@ -146,8 +147,6 @@ sub benchmark {
 
   my ($self, $arg) = @_;
 
-  # make a working directory
-
   $self->_makepath("$self->{_output_}/$self->{_def_name_}");
 
   my $script = BenchLite::UI->new();
@@ -157,8 +156,6 @@ sub benchmark {
 
   print Dumper($self->{_script_});
 
-
-  # $self->_parse_script($arg);
   my ($ptout, $out) = ("","");
 
   print "Benchmarking  ...\n" ;
@@ -170,7 +167,7 @@ sub benchmark {
 
     for (my $b = 1; $b <= $self->{_bootstrap_}; $b++){
 
-      $out =  "$ptout (Iter. No.: $b) ... ";
+      $out = "[Iter: $b] $ptout  ... ";
       print "$out\r";
 
         my $pid = fork;
@@ -181,9 +178,8 @@ sub benchmark {
         }
 
         if ($pid) {
-
-          $self->_measure_memory( $pid+2, $c, $b);
           sleep $self->{_delta_};
+          $self->_measure_memory( $pid+2, $c, $b);
 
         } else {
 
@@ -193,19 +189,44 @@ sub benchmark {
           # Disc
           $self->_measure_disc( $ppd, $c, $b );
 
-          sleep $self->{_delta_};
-          exit;
+          exit 0;
         }
       }
 
-      my $pi = wait();
+      wait();
 
       print "$out Done! \n";
+      sleep $self->{_delta_};
   }
 
   $self->_load_stats();
 
+
   return 1;
+}
+
+
+
+
+
+sub plot {
+
+  my ($self, $select, $data) = @_;
+
+  if (not defined $data) {
+    $data = $self->{_stats_table_};
+  }
+
+  if (not defined $select) {
+    $data = $self->{_script_};
+  }
+
+  my $R = Statistics::R->new(shared => 1);
+  my $plot = BenchLite::Plot::Utility->new();
+  $plot->{_R_} = $R;
+
+  $plot->plot($select,$data);
+  $R->stop();
 }
 
 
@@ -219,6 +240,13 @@ sub get_summary_stats {
   my ($self) = @_;
 
   return $self->{_stats_table_};
+}
+
+sub get_plot_logic {
+
+  my ($self) = @_;
+  return $self->{_script_};
+
 }
 
 
@@ -333,6 +361,7 @@ sub _load_stats {
   my ($self) = @_;
 
   my %table = ();
+
   $self->_compute_summary_stats(\%table, "runtime", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.rtime.log");
 
   $self->_compute_summary_stats(\%table, "memory", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.mem.log");
@@ -349,19 +378,25 @@ sub _measure_memory {
   my ($self, @arg) = @_;
 
   my $stats = BenchLite::Stats::Summary->new();
-  my $mem = 1;
+  my ($mem,$try) = (1, 3);
   my @mem = ();
 
-  while ($mem > 0) {
+  while ($try > 0) {
     sleep $self->{_delta_};
     $mem = $self->_memory_usage($arg[0]);
-    push(@mem,$mem) if $mem;
+    if ($mem > 0){
+      push(@mem,$mem);
+      $try=3;
+    }else{
+      push(@mem,1);
+      $try--;
+    }
   }
 
   open(OM, ">>", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.mem.log") || die "$!";
 
   print OM "#"
-    .join("\t",@{$self->{_script_}->{"head"}->{"tags"}})
+    .join("\t",@{$self->{_script_}->{"head"}->{"tags"}->{0}})
     ."\tBootstrap"
     ."\tPID"
     ."\tMemAvg(MB)"
@@ -403,7 +438,7 @@ sub _measure_runtime{
   open(OT, ">>", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.rtime.log") || die "$!";
 
   print OT "#"
-    .join("\t",@{$self->{_script_}->{"head"}->{"tags"}})
+    .join("\t",@{$self->{_script_}->{"head"}->{"tags"}->{0}})
     ."\tBootstrap"
     ."\tPID"
     ."\tUserTime"
@@ -449,11 +484,11 @@ sub _measure_disc {
   open(OD, ">>", "$self->{_output_}/$self->{_def_name_}/$self->{_name_}.disc.log") || die "$!";
 
   print OD "#"
-    .join("\t",@{$self->{_script_}->{"head"}->{"tags"}})
+    .join("\t",@{$self->{_script_}->{"head"}->{"tags"}->{0}})
     ."\tBootstrap"
     ."\tPID"
     ."\tDiscUsageFlags:"
-    .join("\t",@{$self->{_script_}->{"head"}->{"flags"}})
+    .join("\t",@{$self->{_script_}->{"head"}->{"flags"}->{0}})
     ."\tCmd"
     ."\n" if $arg[1] == 0 && $arg[2] == 1 ;
 
@@ -487,7 +522,7 @@ sub _memory_usage() {
     my $t = new Proc::ProcessTable;
     foreach my $got (@{$t->table}) {
         next unless $got->pid eq $pp;
-        return (sprintf ("%.2f", $got->size / 1000000));
+        return (sprintf ("%.2f", $got->size));
     }
 
 }
