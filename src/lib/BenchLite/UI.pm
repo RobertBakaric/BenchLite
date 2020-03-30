@@ -52,7 +52,7 @@ sub get_cmd {
 
 sub get_plot {
   my ($self) = @_;
-  $self->_rm_plot_dupl();
+  #$self->_rm_plot_dupl();
   return $self->{_script_}->{"plot"};
 }
 
@@ -64,7 +64,7 @@ sub get_head {
 sub get_script {
   my ($self) = @_;
 
-  $self->_rm_plot_dupl();
+  #$self->_rm_plot_dupl();
   return $self->{_script_};
 }
 
@@ -92,6 +92,7 @@ sub parse_script{
   open (SC, "<", $arg) || die "$!";
 
   my $i = 0;
+  my $j  =0;
 
   while (<SC>){
     chomp;
@@ -104,11 +105,12 @@ sub parse_script{
       }elsif(/Classes:/){
         $self->_eval_head($_);
       }elsif(/Plot/){
-        $self->_eval_plot($_);
+        $self->_eval_plot($_, $j++);
       }
     }else{
       $self->{_script_}->{"cmd"}->{$i++}->{"exe"} = $_;
     }
+
   }
   close SC;
 
@@ -127,22 +129,22 @@ sub parse_script{
 
 sub _eval_plot {
 
-  my ($self, $plot) = @_;
+  my ($self, $plot, $plot_num) = @_;
 
   if($plot =~ /%Plot:(.*)/){
     my $c = $1;
-    $self->_parse_desc($c, "plot", "runtime");
-    $self->_parse_desc($c, "plot", "memory");
-    $self->_parse_desc($c, "plot", "disc");
+    $self->_parse_desc($c, $plot_num, "plot", "runtime");
+    $self->_parse_desc($c, $plot_num, "plot", "memory");
+    $self->_parse_desc($c, $plot_num, "plot", "disc");
   }elsif($plot =~ /%PlotRuntime:(.*)/){
     my $c = $1;
-    $self->_parse_desc($c, "plot", "runtime");
+    $self->_parse_desc($c, $plot_num, "plot", "runtime");
   }elsif($plot =~ /%PlotDisc:(.*)/){
     my $c = $1;
-    $self->_parse_desc($c, "plot", "disc");
+    $self->_parse_desc($c, $plot_num, "plot", "disc");
   }elsif($plot =~ /%PlotMemory:(.*)/){
     my $c = $1;
-    $self->_parse_desc($c, "plot", "memory");
+    $self->_parse_desc($c, $plot_num, "plot", "memory");
   }else{
     die "$plot : Not a proper plot syntax!";
   }
@@ -158,10 +160,10 @@ sub _eval_head {
 
   if($head =~ /%TagClasses:(.*)/){
     my $c = $1;
-    $self->_parse_desc($c, "head", "tags");
+    $self->_parse_desc($c, 0, "head", "tags");
   }elsif($head =~ /%FlagClasses:(.*)/){
     my $c = $1;
-    $self->_parse_desc($c, "head", "flags");
+    $self->_parse_desc($c, 0, "head", "flags");
   }else{
     die "$head : Not a proper head syntax!";
   }
@@ -186,7 +188,7 @@ sub _eval_label {
 
 
 sub _parse_desc {
-  my ($self, $desc, $cmd, $what) = @_;
+  my ($self,  $desc, $i, $cmd, $what) = @_;
 
   $desc =~ s/ //g;
   my @mtx = ();
@@ -199,13 +201,13 @@ sub _parse_desc {
         push(@mtx, [$p]);
       }
     }else{
-      push(@{$self->{_script_}->{$cmd}->{$what}},$p);
+      push(@{$self->{_script_}->{$cmd}->{$what}->{$i}},$p);
     }
   }
 
   if ($cmd eq "plot"){
     my $mtx = BenchLite::Stats::Matrix->new();
-    push(@{$self->{_script_}->{$cmd}->{$what}} ,@{$mtx->make_2d_matrix(@mtx)});
+    push(@{$self->{_script_}->{$cmd}->{$what}->{$i}} ,@{$mtx->make_2d_matrix(@mtx)});
   }
 
 
