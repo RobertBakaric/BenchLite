@@ -4,6 +4,8 @@
 
 Simple CLI benchmarking tool
 
+!! MAJOR CODE REORGANIZATION REQUIRED !!
+
 # Synopsis
 
 	Usage:
