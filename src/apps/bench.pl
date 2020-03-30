@@ -68,5 +68,9 @@ $bench->benchmark($script);
 
 # get benchmark results
 my $table  = $bench->get_summary_stats();
-
+my $logic  = $bench->get_plot_logic();
 print Dumper($table);
+
+$bench->plot($logic, $table);
+
+print "INside  \n";
