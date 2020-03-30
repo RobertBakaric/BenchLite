@@ -26,7 +26,7 @@ use strict;
 use warnings;
 use Data::Dumper;
 use BenchLite::Plot::Runtime;
-
+use BenchLite::Plot::DiscIO;
 
 #---------------------------------------------------------#
 #                      CONSTRUCTOR
@@ -72,13 +72,14 @@ sub plot {
 
 
   my $run_R = BenchLite::Plot::Runtime->new();
-  #my $disc_R = BenchLite::Plot::Disc->new();
+  my $disc_R = BenchLite::Plot::DiscIO->new();
   #my $mem_R = BenchLite::Plot::Memory->new();
 
 
   $run_R->{_R_} = $self->{_R_};
+  $disc_R->{_R_} = $self->{_R_};
 
-  my ($r,$o,$b) = (0,0,0);
+  my ($r,$d,$m) = (0,0,0);
   my @runs = ();
   my @mems = ();
   my @dscs = ();
@@ -88,14 +89,32 @@ sub plot {
 
     if ($plot eq 'runtime'){
       my @runplots =  sort{ $a <=> $b } keys %{$select->{'plot'}->{$plot}};
-      my $stop = @runplots;
-      my $tr  = $stop % 3;
-      my $st = ($tr==0) ? ($stop-3) : ($stop-$tr);
+      my $stop = $self->_compute_x_lab(@runplots);
       foreach my $rt_plot (@runplots){
-        push(@runs, $run_R->plot($r++, (($r>$st)?(1):(0)), $select->{'plot'}->{$plot}->{$rt_plot}, $data, "Test_$rt_plot\_$r"));
+        push(@runs, $run_R->plot(
+            $r++,
+            (($r>$stop)?(1):(0)),
+            $select->{'plot'}->{$plot}->{$rt_plot},
+            $data,
+            $select->{'plot_name'}->{$plot}->{$rt_plot})
+        );
       }
     }elsif ($plot eq 'disc'){
-
+      my @discplots =  sort{ $a <=> $b } keys %{$select->{'plot'}->{$plot}};
+      my $stop = $self->_compute_x_lab(@discplots);
+      $disc_R->{_x_unit_} = 'B';
+      $disc_R->{_y_unit_} = 'B';
+      foreach my $ds_plot (@discplots){
+        push(@dscs, $disc_R->plot(
+            $d++,
+            (($d>$stop)?(1):(0)),
+            $select->{'plot'}->{$plot}->{$ds_plot},
+            $data,
+            $select->{'plot_name'}->{$plot}->{$ds_plot},
+            $select->{'head'}->{flags}->{0}
+            )
+        );
+      }
     }elsif($plot eq 'memory'){
 
     }else{
@@ -106,9 +125,17 @@ sub plot {
 
 
   # plot
-  $run_R->plot_summary(@runs);
-  #$self->plot_memory();
-  #$self->plot_disc();
+  if (@runs > 0){
+    $run_R->plot_summary(@runs);
+  }
+  if (@dscs > 0){
+    $disc_R->plot_summary(@dscs);
+  }
+  if (@mems > 0){
+    #$mem_R->plot_summary(@mems);
+  }
+
+
 
   return $self->{_output_};
 }
@@ -120,6 +147,14 @@ sub plot {
 #                   Private Methods
 #---------------------------------------------------------#
 
+
+sub _compute_x_lab {
+  my ($self,@arr) = @_;
+
+  my $stop = @arr;
+  my $tr  = $stop % 3;
+  return ($tr==0) ? ($stop-3) : ($stop-$tr);
+}
 
 sub _check_R_libs {
 
