@@ -60,7 +60,7 @@ sub plot {
 
     # make plot function
 
-    $self->_set_dafaults();
+    $self->_set_globals();
 
     #make x-y axis
     my @name = ();
@@ -88,7 +88,7 @@ sub plot {
         #})
       }
 
-      foreach my $l (@selection){
+      foreach my $l (sort {$a<=>$b} @selection){
         push(@name,join("_", @{$data->{'runtime'}->{'logic'}->[$l]}));
         push(@yval, $data->{'runtime'}->{'data'}->[$l]->[4]/$self->{_y_unit_div_});
         push(@ysd,  $data->{'runtime'}->{'data'}->[$l]->[5]/$self->{_y_unit_div_});
@@ -118,10 +118,10 @@ sub plot {
       )
     );
 
-    $self->{_R_}->run("p$s <- make_runtime_plot(data)"); #
+    $self->{_R_}->run("r$s <- make_runtime_plot(data)"); #
 
 
-  return "p$s";
+  return "r$s";
 
 }
 
@@ -139,19 +139,17 @@ sub plot_summary {
 
   my $Rcode = << "R";
   svg(\"Runtime.svg\",width=$width, height=$highth)
-  pp <- ggarrange($in, ncol=$col, nrow=$row, align = \"v\", common.legend = TRUE, legend=\"bottom\")
-  annotate_figure(pp,
-                  top = text_grob(\"Runtime Analyses\", face = \"bold\", size = 16),
-  #                left = text_grob(text, color = \"black\", rot = 90, size = 14)
-                  )
+  rr <- ggarrange($in, ncol=$col, nrow=$row, align = \"v\", common.legend = TRUE, legend=\"bottom\")
+  annotate_figure(rr,top = text_grob(\"Runtime Analyses\", face = \"bold\", size = 16))
   dev.off()
 R
 
   $self->{_R_}->run($Rcode);
 
 }
+## move this to utility -------------------------------------------------------------------------------------##
 
-sub _set_dafaults{
+sub _set_globals{
 
   my ($self) = @_;
 
