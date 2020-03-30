@@ -147,8 +147,6 @@ sub benchmark {
 
   my ($self, $arg) = @_;
 
-  # make a working directory
-
   $self->_makepath("$self->{_output_}/$self->{_def_name_}");
 
   my $script = BenchLite::UI->new();
@@ -158,8 +156,6 @@ sub benchmark {
 
   print Dumper($self->{_script_});
 
-
-  # $self->_parse_script($arg);
   my ($ptout, $out) = ("","");
 
   print "Benchmarking  ...\n" ;
