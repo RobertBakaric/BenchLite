@@ -79,15 +79,20 @@ sub plot {
   $run_R->{_R_} = $self->{_R_};
 
   my ($r,$o,$b) = (0,0,0);
+  my @runs = ();
+  my @mems = ();
+  my @dscs = ();
   # load data
 
   foreach my $plot (keys %{$select->{'plot'}}){
 
     if ($plot eq 'runtime'){
-      foreach my $rt_plot (keys %{$select->{'plot'}->{$plot}}){
-        $run_R->{_x_scale_} = '-';
-        $run_R->{_y_scale_} = '-';
-        $run_R->plot($r++, $select->{'plot'}->{$plot}->{$rt_plot}, $data, "Test_$r");
+      my @runplots =  sort{ $a <=> $b } keys %{$select->{'plot'}->{$plot}};
+      my $stop = @runplots;
+      my $tr  = $stop % 3;
+      my $st = ($tr==0) ? ($stop-3) : ($stop-$tr);
+      foreach my $rt_plot (@runplots){
+        push(@runs, $run_R->plot($r++, (($r>$st)?(1):(0)), $select->{'plot'}->{$plot}->{$rt_plot}, $data, "Test_$rt_plot\_$r"));
       }
     }elsif ($plot eq 'disc'){
 
@@ -99,13 +104,9 @@ sub plot {
 
   }
 
-  #$data->{'runtime'}->{'data'}->[0]->[4]; # runtime
-  #$data->{'runtime'}->{'data'}->[0]->[5]; # runtime sd
-  #$data->{'disc'}->{'data'}->[0]; # input size
-
 
   # plot
-  #$self->plot_runtime();
+  $run_R->plot_summary(@runs);
   #$self->plot_memory();
   #$self->plot_disc();
 
