@@ -33,7 +33,7 @@ To install & run:
 
 6. Install the program:   
 
-  (sudo) make install
+	`(sudo) make install`
 
 
 7. Execute:
