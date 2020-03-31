@@ -158,5 +158,4 @@ obtained from direct cli app executions
 12. add PCA analysis
 13. replace regex parser with a proper interpreter
 14. replace fork with thread
-15. add cashing option
-16. etc.
+99. etc.
