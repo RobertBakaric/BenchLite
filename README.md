@@ -41,6 +41,7 @@ To install & run:
 
 7. Execute:
 
+```
   ./src/apps/bench.pl -h
 
   Usage:
@@ -52,9 +53,51 @@ To install & run:
 	-e	Print out bench template
 
 
-Execution example
-bench -o MyResults.tsv -b 3 -d 2 -i my.bench
+		Execution example
+		bench -o MyResults.tsv -b 3 -d 2 -i my.bench
+```
 
+Bench script example:   
+
+```
+# Plot definition:
+#Function:-------Tag,------Tag-:-PlotTitle----------------#
+
+%TagClasses:    Tool,     NGS
+#---------------------------------------------------------#
+%PlotRuntime:  T1/T2,      -  : First
+%PlotRuntime:     T1,   HiSeq : Second
+%PlotDisc:        T1,      -  : Tool1
+%PlotDisc:        T2, NovaSeq : Tool2
+%PlotMemory:   T1/T2,      -  : Memory
+
+
+
+%FlagClasses: In, Out
+#---------------------------------------------------------#
+#
+# Aplications:
+
+# app:1
+#---------------------------------------------------------#
+
+%Tags:   T1, HiSeq
+%Flags:   -i,>
+
+perl tool1.pl -i in -x 100  > out.1
+#---------------------------------------------------------#
+
+# app:2
+#---------------------------------------------------------#
+
+%Tags:   T2, NovaSeq
+%Flags:   -i,-o
+
+
+tool2  -x 100 -i in -o out.1
+#---------------------------------------------------------#
+
+```
 
 
 
