@@ -11,18 +11,30 @@ Note: Major code rewriting required!
 To install & run:
 
 
-1. Unpack the BenchLite package (BenchLite-XXX.tar.gz):
+1. Unpack the BenchLite package (BenchLite-XXX.tar.gz):   
+
    tar -xvzf BenchLite-XXX.tar.gz
-2. Change the current directory to BenchLite-XXX:
+
+2. Change the current directory to BenchLite-XXX:   
+
    cd BenchLite-XXX/
-3. Build the program for your system :
+
+3. Build the program for your system:   
+
    perl Build.PL
-4. Compile the program:
+
+4. Compile the program:   
+
    make
-5. Test:
+
+5. Test:   
+
    make test
-6. Install the program:
+
+6. Install the program:   
+
   (sudo) make install
+
 
 7. Execute:
 
