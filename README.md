@@ -10,26 +10,29 @@ Note: Major code rewriting required!
 
 To install & run:
 
+0. Download:    
+
+   `git clone https://github.com/RobertBakaric/BenchLite.git`
 
 1. Unpack the BenchLite package (BenchLite-XXX.tar.gz):   
 
-   tar -xvzf BenchLite-XXX.tar.gz
+   `tar -xvzf BenchLite-XXX.tar.gz`
 
 2. Change the current directory to BenchLite-XXX:   
 
-   cd BenchLite-XXX/
+   `cd BenchLite-XXX/`
 
 3. Build the program for your system:   
 
-   perl Build.PL
+   `perl Build.PL`
 
 4. Compile the program:   
 
-   make
+   `make`
 
 5. Test:   
 
-   make test
+   `make test`
 
 6. Install the program:   
 
