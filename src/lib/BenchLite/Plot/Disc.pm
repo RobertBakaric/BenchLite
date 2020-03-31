@@ -16,7 +16,7 @@
 #  MA 02110-1301, USA.
 #
 #
-package BenchLite::Plot::DiscIO;
+package BenchLite::Plot::Disc;
 #---------------------------------------------------------#
 #                     Libraries
 #---------------------------------------------------------#
@@ -41,8 +41,26 @@ sub new {
     $self->{_x_unit_div_}  = 1_000_000;
     $self->{_x_unit_div_}  = 1_000_000;
 
+    $self->{_summary_stats_} = ();
+
+    $self->{_IMG_} = 'all';
+
     bless $self, $class;
     return $self;
+}
+
+
+
+#---------------------------------------------------------#
+#                      Get
+#---------------------------------------------------------#
+
+
+sub get_summary_stats {
+
+  my ($self) = @_;
+
+  return $self->{_summary_stats_};
 }
 
 
@@ -83,9 +101,7 @@ sub plot {
         }else{
           @selection =@sel;
         }
-        #})
       }
-      print "- @selection ------\n" .  Dumper($data->{'disc'});
       foreach my $l (sort {$a<=>$b} @selection){
         push(@name,join("_", @{$data->{'disc'}->{'logic'}->[$l]}));
         push(@yval, $data->{'disc'}->{'data'}->[$l]->[0]/$self->{_y_unit_div_});
@@ -112,6 +128,13 @@ sub plot {
     $self->{_R_}->set("$x\_cat", \@xcat);
     $self->{_R_}->set("$x", \@xval);
     #$self->{_R_}->set("$x\_sd", \@xsd);
+
+    $self->{_summary_stats_}->{$title} = {
+        $group_by => \@name,
+        $x => \@xval,
+        $y => \@yval,
+        "$y\_cat" => \@xcat
+      };
 
     # plot vectors in series of 3's
     $self->{_R_}->run("data_io <- data.frame($group_by, $x\_cat, $x, $y)");
@@ -142,11 +165,30 @@ sub plot_summary {
   my $in = join(",", @arg);
 
   my $Rcode = << "R";
-  svg(\"IO.svg\",width=$width, height=$highth)
   dd <- ggarrange($in, ncol=$col, nrow=$row, align = \"v\", common.legend = TRUE, legend=\"bottom\")
-  annotate_figure(dd,top = text_grob(\"IO Analyses\", face = \"bold\", size = 16))
+  df <- annotate_figure(dd,top = text_grob(\"IO Analyses\", face = \"bold\", size = 16))
+R
+if ($self->{_IMG_} eq 'svg' || $self->{_IMG_} eq 'all'){
+  $Rcode .= << "R";
+  svg(\"IO.svg\",width=$width, height=$highth)
+  df
   dev.off()
 R
+}
+if ($self->{_IMG_} eq 'pdf' || $self->{_IMG_} eq 'all'){
+  $Rcode .= << "R";
+  pdf(\"IO.pdf\",width=$width, height=$highth)
+  df
+  dev.off()
+R
+}
+if ($self->{_IMG_} eq 'png' || $self->{_IMG_} eq 'all'){
+  $Rcode .= << "R";
+  png(\"IO.png\")
+  df
+  dev.off()
+R
+}
 
   $self->{_R_}->run($Rcode);
 
@@ -215,7 +257,7 @@ sub _make_plot_obj {
 
   make_io_plot <- function(tdf) {
 
-      cmp <- ggplot(tdf, aes(x=$x\_cat, y=$y, fill=$x)) +
+      cmp <- ggplot(tdf, aes(x=$x\_cat, y=$y, fill=$x),sort.val = $x\_cat) +
       geom_bar(stat=\"identity\")+
       scale_fill_brewer(palette=\"Paired\")+
       labs(x = \"$x_lab\", y = \"$y_lab\", title =\"$title\")+

@@ -154,7 +154,7 @@ sub benchmark {
   $script->parse_script($arg);
   $self->{_script_} = $script->get_script();
 
-  print Dumper($self->{_script_});
+  #print Dumper($self->{_script_});
 
   my ($ptout, $out) = ("","");
 
@@ -225,8 +225,10 @@ sub plot {
   my $plot = BenchLite::Plot::Utility->new();
   $plot->{_R_} = $R;
 
-  $plot->plot($select,$data);
+  my $summary = $plot->plot($select,$data);
   $R->stop();
+
+  return $summary;
 }
 
 
