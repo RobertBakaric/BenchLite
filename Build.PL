@@ -36,7 +36,6 @@ my $mb = $class->new(
           'vars'          => 1.03,
           'IPC::Cmd'      => 0.96,
           'JSON'          => 4.02,
-          'Data::UUID'    => 1.6.2,
           'File::Basename'=> 2.85,
           'File::Slurp'   => 9999.19,
           'Getopt::Long'  => 2.49,
@@ -44,6 +43,10 @@ my $mb = $class->new(
           'Proc::ProcessTable' => 0.59,
           'IO::CaptureOutput'  => 1.1105,
           'Statistics::Basic'  => 1.6611,
+          'Statistics::R' => 0.34,
+          'Math::Complex' => 1.5901,
+          'Array::Utils'  => 0.5,
+
       },
 #      auto_features   => {
 #          config_support => {
