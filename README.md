@@ -28,18 +28,14 @@ To install & run:
 
 4. Compile the program:   
 
-   `make`
+   `./Build build`
 
-5. Test:   
+5. Install the program:   
 
-   `make test`
-
-6. Install the program:   
-
-	`(sudo) make install`
+	`./Build install`
 
 
-7. Execute:
+6. Execute:
 
 ```
   ./src/apps/bench.pl -h
@@ -154,7 +150,6 @@ obtained from direct cli app executions
 7. reorganize the code to achieve better modularity
 9. fix png plot
 10. write latex extension
-11. finish Buld.PL
 12. add PCA analysis
 13. replace regex parser with a proper interpreter
 14. replace fork with thread
