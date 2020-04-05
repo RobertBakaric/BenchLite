@@ -5,8 +5,8 @@ COPYING
 Build.PL
 README.md
 #doc/BenchLite.pdf
-src/apps/check.pl
-src/apps/bench.pl
+src/bin/check.pl
+src/bin/bench.pl
 src/lib/BenchLite/Core.pm
 src/lib/BenchLite/UI.pm
 src/lib/BenchLite/Stats/Summary.pm
