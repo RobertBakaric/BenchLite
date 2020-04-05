@@ -190,7 +190,10 @@ sub benchmark {
           # Time
           $self->_measure_runtime( $ppd, $c, $b );
           # Disc
-          $self->_measure_disc( $ppd, $c, $b );
+          if (defined $self->{_script_}->{"cmd"}->{$c}->{"flags"}){
+            $self->_measure_disc( $ppd, $c, $b );
+          }
+
 
           exit 0;
         }
@@ -341,7 +344,7 @@ sub _compute_summary_stats {
 
       $matrix->recompute_stats_matrix(\@tmpdat);
 
-      if ($data[$boot]  == $self->{_bootstrap_}){
+      if ($data[$boot]  == $self->{_bootstrap_}){  #                        BUG here: Argument "sfq" isn't numeric in numeric eq (==) at /home/rbakaric/lib/BenchLite/Core.pm line 346, <IN> line 1.
 
         my @avgdat = ();
         foreach my $sts (@{$matrix->get_stats_matrix()}){
@@ -434,7 +437,7 @@ sub _measure_runtime{
   my ($self, @arg) = @_;
 
   my $start_time = [Time::HiRes::gettimeofday()];
-  system("$self->{_script_}->{cmd}->{$arg[1]}->{exe} 2> $self->{_output_}/$self->{_def_name_}/$self->{_log_}");
+  system("$self->{_script_}->{cmd}->{$arg[1]}->{exe} >> $self->{_output_}/$self->{_def_name_}/$self->{_log_} 2>&1 ");
   my ($user, $system, $child_user, $child_system) = times;
   my $clock =  Time::HiRes::tv_interval($start_time);
 
@@ -471,6 +474,8 @@ sub _measure_disc {
 
   my ($self,@arg) = @_;
 
+
+
   my @flags = @{$self->{_script_}->{"cmd"}->{$arg[1]}->{"flags"}};
   my @cmd   = split(" ",$self->{_script_}->{"cmd"}->{$arg[1]}->{"exe"});
   my @flag_res = ();
@@ -478,7 +483,7 @@ sub _measure_disc {
   for (my $q=0; $q<@cmd; $q++){
     for (my $f = 0; $f < @flags; $f++) {
       if ($cmd[$q] eq $flags[$f]){
-        my $d = qx(du -b $cmd[$q+1]);
+        my $d = qx(du -b $cmd[$q+1]*);
         $d=~/^(.*?)\s+/;
         $flag_res[$f] = $1;
       }
