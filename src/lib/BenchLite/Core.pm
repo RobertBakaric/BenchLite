@@ -148,29 +148,34 @@ sub new {
 
 sub benchmark {
 
-  my ($self, $arg) = @_;
+  my ($self, $sc, $st) = @_;
+
+  ## A decisiin needs to be made whether a cleanup needs to be done or not
+  ## if starting from $s == 0 then clean weverything
+  ## if $st > 0  erace cmd from that point onward and recalculate
 
   $self->_makepath("$self->{_output_}/$self->{_def_name_}");
 
   my $script = BenchLite::UI->new();
 
-  $script->parse_script($arg);
+  $script->parse_script($sc);
   $self->{_script_} = $script->get_script();
 
-  #print Dumper($self->{_script_});
+  #die Dumper($self->{_script_});
 
-  my ($ptout, $out) = ("","");
+  my ($ptout, $out, $cd, $prev) = ("","", 0, 0);
+  my @cmds = keys %{$self->{_script_}->{"cmd"}};
 
   print "Benchmarking  ...\n" ;
 
-  foreach my $c (sort {$a <=> $b} keys %{$self->{_script_}->{"cmd"}}) {
+  foreach (my $c = $st-1; $c<@cmds; $c++) {
 
     my $pid = $$;
     $ptout  = "$self->{_script_}->{cmd}->{$c}->{exe}";
 
     for (my $b = 1; $b <= $self->{_bootstrap_}; $b++){
 
-      $out = "[Iter: $b] $ptout  ... ";
+      $out = "[cmdID: ".($c+1)." / iterID: $b] $ptout  ... ";
       print "$out\r";
 
         my $pid = fork;
@@ -191,7 +196,8 @@ sub benchmark {
           $self->_measure_runtime( $ppd, $c, $b );
           # Disc
           if (defined $self->{_script_}->{"cmd"}->{$c}->{"flags"}){
-            $self->_measure_disc( $ppd, $c, $b );
+            $self->_measure_disc( $ppd, $c, $b, $cd, ($c> 0 && $cd == 0 && $prev  == 0) ? (1) : (0));
+            $cd++;
           }
 
 
@@ -203,6 +209,8 @@ sub benchmark {
 
       print "$out Done! \n";
       sleep $self->{_delta_};
+      $prev++;
+      $cd++ if (defined $self->{_script_}->{"cmd"}->{$c}->{"flags"});
   }
 
   $self->_load_stats();
@@ -315,7 +323,6 @@ sub _compute_summary_stats {
 
   my ($boot, $mes, $x) = (0,0,0);
   my $matrix  = BenchLite::Stats::Matrix->new();
-
 
   open (IN, "<", $file) || die "$!";
 
@@ -437,7 +444,7 @@ sub _measure_runtime{
   my ($self, @arg) = @_;
 
   my $start_time = [Time::HiRes::gettimeofday()];
-  system("$self->{_script_}->{cmd}->{$arg[1]}->{exe} >> $self->{_output_}/$self->{_def_name_}/$self->{_log_} 2>&1 ");
+  system("$self->{_script_}->{cmd}->{$arg[1]}->{exe} 2>> $self->{_output_}/$self->{_def_name_}/$self->{_log_} ");
   my ($user, $system, $child_user, $child_system) = times;
   my $clock =  Time::HiRes::tv_interval($start_time);
 
@@ -500,7 +507,7 @@ sub _measure_disc {
     ."\tDiscUsageFlags:"
     .join("\t",@{$self->{_script_}->{"head"}->{"flags"}->{0}})
     ."\tCmd"
-    ."\n" if $arg[1] == 0 && $arg[2] == 1 ;
+    ."\n" if $arg[3] == 0 && $arg[2] == 1 && $arg[4] == 0;
 
   print OD ""
     .join("\t",@{$self->{_script_}->{"cmd"}->{$arg[1]}->{"tags"}})
