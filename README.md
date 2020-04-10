@@ -38,7 +38,7 @@ To install & run:
 6. Execute:
 
 ```
-  ./src/apps/bench.pl -h
+  ./bin/bench.pl -h
 
   Usage:
 
@@ -47,6 +47,7 @@ To install & run:
 	-b	Number of times to repeat a given measurment
 	-d	Time interval for memory snaps [in sec]
 	-e	Print out bench template
+  -s  Re-Enter form cmd X
 
 
 		Execution example
