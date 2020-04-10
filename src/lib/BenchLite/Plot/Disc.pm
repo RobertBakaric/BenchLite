@@ -44,7 +44,7 @@ sub new {
     $self->{_y_unit_}  = 'MB';
 
     $self->{_x_unit_div_}  = 1_000_000;
-    $self->{_x_unit_div_}  = 1_000_000;
+    $self->{_y_unit_div_}  = 1_000_000;
 
     $self->{_summary_stats_} = ();
 
@@ -113,8 +113,7 @@ sub plot {
         push(@yval, $data->{'disc'}->{'data'}->[$l]->[2]/$self->{_y_unit_div_});
         #push(@ysd, $data->{'disc'}->{'data'}->[$l]->[1]/$self->{_y_unit_div_});
         #push(@ysd, $data->{'disc'}->{'data'}->[$l]->[3]/$self->{_y_unit_div_});
-        my $cat = sprintf("%.2f", (($data->{'disc'}->{'data'}->[$l]->[0]/$self->{_y_unit_div_}/
-                               $data->{'disc'}->{'data'}->[$l]->[2]/$self->{_y_unit_div_})*100) );
+        my $cat = sprintf("%.2f", (($data->{'disc'}->{'data'}->[$l]->[0]/$data->{'disc'}->{'data'}->[$l]->[2])*100) );
 
         push(@xval, $cats->[0], $cats->[1]);
         push(@xcat, "$cat\%", "$cat\%");

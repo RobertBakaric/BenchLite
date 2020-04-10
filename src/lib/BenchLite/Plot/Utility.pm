@@ -110,8 +110,6 @@ sub plot {
     }elsif ($plot eq 'disc'){
       my @discplots =  sort{ $a <=> $b } keys %{$select->{'plot'}->{$plot}};
       my $stop = $self->_compute_x_lab(@discplots);
-      $disc_R->{_x_unit_} = 'B';
-      $disc_R->{_y_unit_} = 'B';
       foreach my $ds_plot (@discplots){
         push(@dscs, $disc_R->plot(
             $d++,

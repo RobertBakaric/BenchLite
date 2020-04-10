@@ -39,13 +39,13 @@ sub new {
     my ($class) = @_;
 
     my $self->{_R_}  = ();
-    $self->{_x_scale_} = 'log10';
-    $self->{_y_scale_} = 'log10';
+    $self->{_x_scale_} = 'log10'; #log10
+    $self->{_y_scale_} = 'log10'; #log10
     $self->{_x_unit_}  = 'MB';
     $self->{_y_unit_}  = 'MB';
 
     $self->{_x_unit_div_}  = 1_000_000;
-    $self->{_x_unit_div_}  = 1_000_000;
+    $self->{_y_unit_div_}  = 1_000_000;
 
     $self->{_summary_stats_} = ();
 
