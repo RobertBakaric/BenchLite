@@ -1,12 +1,11 @@
 use Module::Build;
 # See perldoc Module::Build for details of how this works I will not
 # be explaining this now
-use File::Path qw(make_path);
-make_path('./bin', './lib', './t');
+
 use File::Copy::Recursive qw(rcopy);
-rcopy("./src/lib/*", "./lib/") || die "$! : could not copy!";
-rcopy("./src/bin/*", "./bin/") || die "$! : could not copy!";
-rcopy("./src/t/*", "./t/") || die "$! : could not copy!";
+rcopy("./src/lib/*", "./lib");
+rcopy("./src/bin/*", "./bin");
+rcopy("./src/t/*", "./t");
 
 my $class = Module::Build->subclass
 (
@@ -22,10 +21,11 @@ my $class = Module::Build->subclass
 
 my $mb = $class->new(
       dist_name       => 'BenchLite',
-      dist_version    => '0.01',
+      dist_version    => '0.04',
       module_name     => 'BenchLite',
       license         => 'GPL.v3.0',
       dist_author     => 'Robert Bakaric & Neva Skrabar',
+      dist_abstract   => "Abstract",
       #script_files    => './src/apps/build_ppipe',
       configure_requires => {
           'Module::Build' => 0.4224,
