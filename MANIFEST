@@ -11,6 +11,7 @@ src/lib/BenchLite/Core.pm
 src/lib/BenchLite/UI.pm
 src/lib/BenchLite/Stats/Summary.pm
 src/lib/BenchLite/Stats/Matrix.pm
+src/lib/BenchLite/Plot/Utility.pm
 src/lib/BenchLite/Plot/Disc.pm
 src/lib/BenchLite/Plot/Runtime.pm
 src/lib/BenchLite/Plot/Memory.pm
