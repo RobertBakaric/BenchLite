@@ -35,14 +35,15 @@ my $bench = BenchLite::Core->new();
 #                        CLI
 #---------------------------------------------------------#
 
-my ($help,$script,$out,$boot,$deltaT,$example);
+my ($help,$script,$out,$boot,$deltaT,$example, $start);
 
 GetOptions ("i=s" => \$script,
             "h" => \$help,
             "o=s" => \$out,
             "b=i" => \$boot,
             "d=i" => \$deltaT,
-            "e"  => \$example
+            "e"  => \$example,
+            "s=i" => \$start,
             );
 
 if($help  || !$script ){
@@ -52,6 +53,7 @@ if($help  || !$script ){
   print "\t-b\tNumber of times to repeat a given measurment\n";
   print "\t-d\tTime interval for memory snaps [in sec]\n";
   print "\t-e\tPrint out bench template\n";
+  print "\t-s\tStart form cmd X\n";
   print "\n\nExecution example\n";
   print "bench -o MyResults.tsv -b 3 -d 2 -i my.bench\n";
   exit(0);
@@ -73,6 +75,7 @@ $boot = 1 unless $boot;
 my $ofh ;
 if ($out){
   open ($ofh, ">", $out) || die "$!";
+  $bench->{_def_name_}= "$out.sandbox";
 }
 
 # bootstrap mode set to 0 means only a single cmd execution will be preformed
@@ -84,12 +87,16 @@ $bench->{_log_} = "Bench.log";
 $bench->{_delta_} = 1;
 
 
+# set start cmd
+
+$start = 1 unless $start;
+
 #---------------------------------------------------------#
 #                         main
 #---------------------------------------------------------#
 
 # execute *.bench script
-$bench->benchmark($script);
+$bench->benchmark($script,$start);
 
 # get benchmark results
 my $table  = $bench->get_summary_stats();
